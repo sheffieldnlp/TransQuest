@@ -1,8 +1,12 @@
 import argparse
+import numpy as np
 import os
 import shutil
 
-import numpy as np
+from scipy.stats import pearsonr, spearmanr
+
+from collections import defaultdict
+
 import torch
 
 from sklearn.metrics import mean_absolute_error
@@ -44,6 +48,10 @@ def evaluate_model(test_set, config, model=None):
     return model_outputs
 
 
+def predictions_column(training_run):
+    return 'predictions_{}'.format(training_run)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_path', required=True)
@@ -55,31 +63,42 @@ def main():
     args = parser.parse_args()
     config = load_config(args)
     train, test = read_data_files(args.train_path, args.test_path, features_pref=args.features_pref)
+    run = 1
     if config['evaluate_during_training']:
         if config['n_fold'] > 1:
-            test_preds = np.zeros((len(test), config['n_fold']))
             for i in range(config['n_fold']):
                 print('Training with N folds. Now N is {}'.format(i))
+                run = i
                 if os.path.exists(config['output_dir']) and os.path.isdir(config['output_dir']):
                     shutil.rmtree(config['output_dir'])
                 train_model(train, config, n_fold=i, test_size=args.test_size)
                 model_outputs = evaluate_model(test, config)
-                test_preds[:, i] = model_outputs
-            test['predictions'] = test_preds.mean(axis=1)
+                test[predictions_column(run)] = model_outputs
         else:
             train_model(train, config, test_size=args.test_size)
             model_outputs = evaluate_model(test, config)
-            test['predictions'] = model_outputs
+            test[predictions_column(run)] = model_outputs
     else:
         model = train_model(train, config, return_model=True)
         model_outputs = evaluate_model(test, config, model=model)
-        test['predictions'] = model_outputs
+        test[predictions_column(run)] = model_outputs
 
-    test = un_fit(test, 'labels')
-    test = un_fit(test, 'predictions')
-    test.to_csv(os.path.join(args.output_dir, 'results.tsv'), header=True, sep='\t', index=False, encoding='utf-8')
-    draw_scatterplot(test, 'labels', 'predictions', os.path.join(args.output_dir, 'results.png'),
-                     config['MODEL_TYPE'] + ' ' + config['MODEL_NAME'])
+    runs = 1 if config['n_fold'] < 2 else config['n_fold']
+    correlations = defaultdict(list)
+    for r in range(len(runs)):
+        test = un_fit(test, 'labels')
+        test = un_fit(test, predictions_column(r))
+        correlations['pearson'].append(pearsonr(test[predictions_column(r)], test['labels'])[0])
+        correlations['spearman'].append(spearmanr(test[predictions_column(r)], test['labels'])[0])
+        preds_path = os.path.join(args.output_dir, 'results_{}.tsv'.format(r))
+        plot_path = os.path.join(args.output_dir, 'results_{}.png'.format(r))
+        test.to_csv(preds_path, header=True, sep='\t', index=False, encoding='utf-8')
+        draw_scatterplot(test, 'labels', predictions_column(r), plot_path, config['MODEL_TYPE'] + ' ' + config['MODEL_NAME'])
+    for corr in ('pearson', 'spearman'):
+        print(corr)
+        print(correlations[corr])
+        print(np.mean(correlations[corr]))
+        print(np.std(correlations[corr]))
 
 
 if __name__ == '__main__':
