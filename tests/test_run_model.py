@@ -2,6 +2,7 @@ import os
 import unittest
 
 from transquest.bin.train import train_model  # TODO: this method should be in a different place
+from transquest.bin.train import train_cycle  # TODO: this method should be in a different place
 from transquest.util.data import load_config
 from transquest.util.data import read_data_files
 
@@ -40,3 +41,10 @@ class TestTrain(unittest.TestCase):
         config['reduce'] = True
         train, test = read_data_files(self.train_path, self.test_path, features_pref=self.features_pref)
         train_model(train, config, test_size=0.5)
+
+    def test_runs_training_cycle(self):
+        config = load_config(self.args)
+        config['MODEL_TYPE'] = 'xlmrobertainject'
+        config['n_fold'] = 2
+        train, test = read_data_files(self.train_path, self.test_path, features_pref=self.features_pref)
+        train_cycle(train, test, config, self.out_dir, test_size=0.5)

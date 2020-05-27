@@ -168,7 +168,7 @@ class QuestModel:
             warnings.warn("wandb_project specified but wandb is not available. Wandb disabled.")
             self.args["wandb_project"] = None
 
-        self.use_features = False
+        self.use_features = False  # TODO: change this, too ad-hoc
         if model_type == "xlmrobertainject":
             self.use_features = True
 
