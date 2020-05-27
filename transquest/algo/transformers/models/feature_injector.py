@@ -20,6 +20,7 @@ class Combinator(nn.Module):
         self.num_features = config.num_features
         self.num_labels = config.num_labels
         self.hidden_dim = config.hidden_size
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
     @staticmethod
     def prepare_features_inject(features_inject):
@@ -80,5 +81,4 @@ class Conv1D(Combinator):
     def forward(self, x, features_inject):
         features_inject = self.prepare_features_inject(features_inject)
         assert features_inject.shape[1] == self.num_features
-
         return x
