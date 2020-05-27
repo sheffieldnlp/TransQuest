@@ -46,7 +46,6 @@ class Reduce(Combinator):
         x = torch.cat((x, features_inject), dim=1)
         x = self.dense(x)
         x = torch.tanh(x)
-        x = self.dropout(x)
         x = self.out_proj(x)
         return x
 
@@ -64,7 +63,6 @@ class Concat(Combinator):
         x = torch.cat((x, features_inject), dim=1)
         x = self.dense(x)
         x = torch.tanh(x)
-        x = self.dropout(x)
         x = self.out_proj(x)
         return x
 
@@ -73,12 +71,20 @@ class ReduceGradual(Combinator):
     pass
 
 
-class Conv1D(Combinator):
+class Convolution(Combinator):
 
     def __init__(self, config):
-        super(Conv1D, self).__init__(config)
+        super(Convolution, self).__init__(config)
+        self.conv = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=8, stride=3)
+        self.pool = nn.MaxPool1d(kernel_size=8, stride=3)
 
     def forward(self, x, features_inject):
         features_inject = self.prepare_features_inject(features_inject)
         assert features_inject.shape[1] == self.num_features
+        x = torch.cat((x, features_inject), dim=1)
+        x = self.conv(x)
+        print(x.shape)
+        x = self.pool(x)
+        print(x.shape)
+        x = torch.tanh(x)
         return x
