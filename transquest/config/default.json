@@ -49,8 +49,6 @@
     "early_stopping_metric": "eval_loss",
     "early_stopping_metric_minimize": true,
 
-    "manual_seed": 777,
-
     "encoding": null,
     "num_features": 1,
     "reduce": false

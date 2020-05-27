@@ -99,12 +99,13 @@ class QuestModel:
             "flaubert": (FlaubertConfig, FlaubertForSequenceClassification, FlaubertTokenizer),
         }
 
-        if args and 'manual_seed' in args:
-            random.seed(args['manual_seed'])
-            np.random.seed(args['manual_seed'])
-            torch.manual_seed(args['manual_seed'])
+        if args and 'running_seed' in args:
+            print('Seed is {}'.format(args['running_seed']))
+            random.seed(args['running_seed'])
+            np.random.seed(args['running_seed'])
+            torch.manual_seed(args['running_seed'])
             if 'n_gpu' in args and args['n_gpu'] > 0:
-                torch.cuda.manual_seed_all(args['manual_seed'])
+                torch.cuda.manual_seed_all(args['running_seed'])
 
         config_class, model_class, tokenizer_class = MODEL_CLASSES[model_type]
         if num_labels:
