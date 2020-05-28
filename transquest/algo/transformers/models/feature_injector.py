@@ -36,6 +36,7 @@ class Reduce(Combinator):
         assert x.shape == (batch_dim, self.num_features)
         x = torch.cat((x, features_inject), dim=1)
         x = self.dense(x)
+        x = torch.tanh(x)
         x = self.out_proj(x)
         return x
 
@@ -52,6 +53,7 @@ class Concat(Combinator):
         assert features_inject.shape[1] == self.num_features
         x = torch.cat((x, features_inject), dim=1)
         x = self.dense(x)
+        x = torch.tanh(x)
         x = self.out_proj(x)
         return x
 
