@@ -1,16 +1,7 @@
+import numpy as np
 import torch
 
 from torch import nn
-
-
-class FeatureInjector(nn.Module):
-
-    def __init__(self, config):
-        super().__init__()
-        self.combinator = Reduce(config) if config.reduce else Concat(config)
-
-    def forward(self, x, features_inject):
-        return self.combinator(x, features_inject)
 
 
 class Combinator(nn.Module):
@@ -65,24 +56,48 @@ class Concat(Combinator):
         return x
 
 
-class ReduceGradual(Combinator):
-    pass
-
-
 class Convolution(Combinator):
 
     def __init__(self, config):
         super(Convolution, self).__init__(config)
+
+        self.kernel_size = 8
+        self.stride = 3
+        self.out_conv_size = self.compute_conv_output_size(self.hidden_dim)
+        self.out_pool_size = self.compute_conv_output_size(self.out_conv_size)
+        print(self.out_conv_size)
+        print(self.out_pool_size)
+
         self.conv = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=8, stride=3)
         self.pool = nn.MaxPool1d(kernel_size=8, stride=3)
+        self.out_proj = nn.Linear(self.out_pool_size, self.num_labels)
 
     def forward(self, x, features_inject):
         features_inject = self.prepare_features_inject(features_inject)
         assert features_inject.shape[1] == self.num_features
         x = torch.cat((x, features_inject), dim=1)
+        x = torch.unsqueeze(x, dim=1)
         x = self.conv(x)
-        print(x.shape)
         x = self.pool(x)
-        print(x.shape)
         x = torch.tanh(x)
+        x = self.out_proj(x)
         return x
+
+    def compute_conv_output_size(self, inp_dim):
+        return int(np.floor((inp_dim - (self.kernel_size - 1) - 1)/self.stride + 1))
+
+
+class FeatureInjector(nn.Module):
+
+    methods = {
+        'reduce': Reduce,
+        'concat': Concat,
+        'conv': Convolution,
+    }
+
+    def __init__(self, config):
+        super().__init__()
+        self.combinator = self.methods[config.feature_combination](config)
+
+    def forward(self, x, features_inject):
+        return self.combinator(x, features_inject)

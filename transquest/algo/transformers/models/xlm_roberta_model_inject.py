@@ -7,10 +7,10 @@ from transquest.algo.classifiers import RobertaClassificationHeadInjection
 
 class XLMRobertaInjectConfig(XLMRobertaConfig):
 
-    def __init__(self, num_features=None, reduce=False, **kwargs):
+    def __init__(self, num_features=None, feature_combination="concat", **kwargs):
         super(XLMRobertaInjectConfig, self).__init__(**kwargs)
         self.num_features = num_features
-        self.reduce = reduce
+        self.feature_combination = feature_combination
 
 
 class XLMRobertaForSequenceClassificationInject(XLMRobertaForSequenceClassification):

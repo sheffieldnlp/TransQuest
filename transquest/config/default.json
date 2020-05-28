@@ -51,5 +51,5 @@
 
     "encoding": null,
     "num_features": 1,
-    "reduce": false
+    "feature_combination": "concat"
 }
