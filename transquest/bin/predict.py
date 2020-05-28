@@ -6,11 +6,11 @@ from transquest.algo.transformers.run_model import QuestModel
 from transquest.algo.transformers.evaluation import pearson_corr, spearman_corr
 from sklearn.metrics import mean_absolute_error
 
-from transquest.util.normalizer import un_fit
+from transquest.data.normalizer import un_fit
 from transquest.util.draw import draw_scatterplot
 
-from transquest.util.data import read_data_file
-from transquest.util.data import load_config
+from transquest.data.read_dataframe import read_data_file
+from transquest.data.load_config import load_config
 
 
 def main():

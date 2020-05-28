@@ -2,10 +2,11 @@ import os
 
 import unittest
 
-from transquest.util.data import read_data_files
-from transquest.util.data import load_examples
+from transquest.data.read_dataframe import read_data_files
+from transquest.data.read_dataframe import load_examples
+from transquest.data.load_config import load_config
+from transquest.data.make_dataset import make_dataset
 from transquest.algo.transformers.run_model import QuestModel
-from transquest.util.data import load_config
 
 from tests.utils import Args
 
@@ -49,8 +50,8 @@ class TestData(unittest.TestCase):
         train_df, test_df = read_data_files(self.train_tsv, self.test_tsv, features_pref=self.features_pref)
         examples = load_examples(test_df)
         config = load_config(self.args)
-        m = QuestModel(config['MODEL_TYPE'], config['MODEL_NAME'], args=config, use_cuda=False)
-        dataset = m.make_dataset(examples)
+        model = QuestModel(config['MODEL_TYPE'], config['MODEL_NAME'], args=config, use_cuda=False)
+        dataset = make_dataset(examples, model.tokenizer, model.args)
         assert len(dataset.tensors) == 5
         assert dataset.tensors[4].shape == (9, 2)
 

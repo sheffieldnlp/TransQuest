@@ -16,9 +16,9 @@ from transquest.algo.transformers.evaluation import pearson_corr, spearman_corr
 from transquest.algo.transformers.run_model import QuestModel
 from transquest.util.draw import draw_scatterplot
 
-from transquest.util.data import read_data_files
-from transquest.util.data import load_config
-from transquest.util.normalizer import un_fit
+from transquest.data.read_dataframe import read_data_files
+from transquest.data.load_config import load_config
+from transquest.data.normalizer import un_fit
 
 
 def train_model(train_set, config, n_fold=None, test_size=None, return_model=False):

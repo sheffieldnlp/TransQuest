@@ -18,6 +18,7 @@
     "warmup_steps": 0,
     "max_grad_norm": 1.0,
     "do_lower_case": false,
+    "num_labels": 1,
 
     "logging_steps": 300,
     "save_steps": 300,

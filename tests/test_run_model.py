@@ -3,8 +3,8 @@ import unittest
 
 from transquest.bin.train import train_model  # TODO: this method should be in a different place
 from transquest.bin.train import train_cycle  # TODO: this method should be in a different place
-from transquest.util.data import load_config
-from transquest.util.data import read_data_files
+from transquest.data.load_config import load_config
+from transquest.data.read_dataframe import read_data_files
 
 from tests.utils import Args
 

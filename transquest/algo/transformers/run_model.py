@@ -55,9 +55,10 @@ from transquest.algo.transformers.models.xlm_roberta_model import XLMRobertaForS
 from transquest.algo.transformers.models.xlm_roberta_model_inject import XLMRobertaForSequenceClassificationInject
 from transquest.algo.transformers.models.xlm_roberta_model_inject import XLMRobertaInjectConfig
 from transquest.algo.transformers.models.xlnet_model import XLNetForSequenceClassification
-from transquest.algo.transformers.utils import InputExample, convert_examples_to_features
+from transquest.data.containers import InputExample
 
-from transquest.util.data import load_examples
+from transquest.data.read_dataframe import load_examples
+from transquest.data.make_dataset import make_dataset
 
 
 try:
@@ -108,13 +109,8 @@ class QuestModel:
                 torch.cuda.manual_seed_all(args['running_seed'])
 
         config_class, model_class, tokenizer_class = MODEL_CLASSES[model_type]
-        if num_labels:
-            self.config = config_class.from_pretrained(
-                model_name, num_labels=num_labels, **args, **kwargs)
-            self.num_labels = num_labels
-        else:
-            self.config = config_class.from_pretrained(model_name, **args, **kwargs)  # TODO: this fails if args is None
-            self.num_labels = self.config.num_labels
+        self.config = config_class.from_pretrained(model_name, **args, **kwargs)
+        self.num_labels = self.config.num_labels
         self.weight = weight
 
         if use_cuda:
@@ -169,10 +165,6 @@ class QuestModel:
             warnings.warn("wandb_project specified but wandb is not available. Wandb disabled.")
             self.args["wandb_project"] = None
 
-        self.use_features = False  # TODO: change this, too ad-hoc
-        if model_type == "xlmrobertainject":
-            self.use_features = True
-
     def train_model(
         self,
         train_df,
@@ -226,7 +218,7 @@ class QuestModel:
 
         train_examples = load_examples(train_df)
 
-        train_dataset = self.make_dataset(train_examples, verbose=verbose, use_features=self.use_features)
+        train_dataset = make_dataset(train_examples, self.tokenizer, self.args, verbose=verbose)
 
         os.makedirs(output_dir, exist_ok=True)
         global_step, tr_loss = self.train(
@@ -541,11 +533,9 @@ class QuestModel:
         print('Loaded {} examples for evaluation'.format(len(eval_examples)))
 
         if args["sliding_window"]:
-            eval_dataset, window_counts = self.make_dataset(
-                eval_examples, evaluate=True, verbose=verbose, silent=silent, use_features=self.use_features
-            )
+            eval_dataset, window_counts = make_dataset(eval_examples, self.tokenizer, self.args, evaluate=True, verbose=verbose, silent=silent)
         else:
-            eval_dataset = self.make_dataset(eval_examples, evaluate=True, verbose=verbose, silent=silent, use_features=self.use_features)
+            eval_dataset = make_dataset(eval_examples, self.tokenizer, self.args, evaluate=True, verbose=verbose, silent=silent)
         os.makedirs(eval_output_dir, exist_ok=True)
 
         eval_sampler = SequentialSampler(eval_dataset)
@@ -625,112 +615,6 @@ class QuestModel:
 
         return results, model_outputs, wrong
 
-    def make_dataset(  # TODO: Move data-related methods to data module
-        self, examples, evaluate=False, no_cache=False, multi_label=False, verbose=True, silent=False, use_features=False
-    ):
-        """
-        Converts a list of InputExample objects to a TensorDataset containing InputFeatures. Caches the InputFeatures.
-
-        Utility function for train() and eval() methods. Not intended to be used directly.
-        """
-
-        process_count = self.args["process_count"]
-
-        tokenizer = self.tokenizer
-        args = self.args
-
-        if not no_cache:
-            no_cache = args["no_cache"]
-
-        if not multi_label and args["regression"]:
-            output_mode = "regression"
-        else:
-            output_mode = "classification"
-
-        os.makedirs(self.args["cache_dir"], exist_ok=True)
-
-        mode = "dev" if evaluate else "train"
-        cached_features_file = os.path.join(
-            args["cache_dir"],
-            "cached_{}_{}_{}_{}_{}".format(
-                mode, args["model_type"], args["max_seq_length"], self.num_labels, len(examples),
-            ),
-        )
-
-        if os.path.exists(cached_features_file) and (
-            (not args["reprocess_input_data"] and not no_cache) or (
-                mode == "dev" and args["use_cached_eval_features"] and not no_cache)
-        ):
-            features = torch.load(cached_features_file)
-            if verbose:
-                print(f"Features loaded from cache at {cached_features_file}")
-        else:
-            if verbose:
-                print(f"Converting to features started. Cache is not used.")
-                if args["sliding_window"]:
-                    print("Sliding window enabled")
-            features = convert_examples_to_features(
-                examples,
-                args["max_seq_length"],
-                tokenizer,
-                output_mode,
-                # XLNet has a CLS token at the end
-                cls_token_at_end=bool(args["model_type"] in ["xlnet"]),
-                cls_token=tokenizer.cls_token,
-                cls_token_segment_id=2 if args["model_type"] in ["xlnet"] else 0,
-                sep_token=tokenizer.sep_token,
-                # RoBERTa uses an extra separator b/w pairs of sentences,
-                # cf. github.com/pytorch/fairseq/commit/1684e166e3da03f5b600dbb7855cb98ddfcd0805
-                sep_token_extra=bool(args["model_type"] in ["roberta", "camembert", "xlmroberta"]),
-                # PAD on the left for XLNet
-                pad_on_left=bool(args["model_type"] in ["xlnet"]),
-                pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
-                pad_token_segment_id=4 if args["model_type"] in ["xlnet"] else 0,
-                process_count=process_count,
-                multi_label=multi_label,
-                silent=args["silent"] or silent,
-                use_multiprocessing=args["use_multiprocessing"],
-                sliding_window=args["sliding_window"],
-                flatten=not evaluate,
-                stride=args["stride"],
-            )
-            if verbose and args["sliding_window"]:
-                print(f"{len(features)} features created from {len(examples)} samples.")
-
-            if not no_cache:
-                torch.save(features, cached_features_file)
-
-        if args["sliding_window"] and evaluate:
-            window_counts = [len(sample) for sample in features]
-            features = [feature for feature_set in features for feature in feature_set]
-
-        all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
-        all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
-        all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
-        all_features = None
-        if features[0].features_inject:
-            num_features = len(features[0].features_inject)
-            features_arr = np.zeros((len(features), num_features))
-            for i, f in enumerate(features):
-                for j, feature_name in enumerate(f.features_inject.keys()):
-                    features_arr[i][j] = f.features_inject[feature_name]
-            all_features = torch.tensor(features_arr, dtype=torch.float)
-
-        if output_mode == "classification":
-            all_label_ids = torch.tensor([f.label_id for f in features], dtype=torch.long)
-        elif output_mode == "regression":
-            all_label_ids = torch.tensor([f.label_id for f in features], dtype=torch.float)
-
-        if all_features is not None:
-            dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids, all_features)
-        else:
-            dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
-
-        if args["sliding_window"] and evaluate:
-            return dataset, window_counts
-        else:
-            return dataset
-
     def compute_metrics(self, preds, labels, eval_examples, multi_label=False, **kwargs):
         """
         Computes the evaluation metrics for the model predictions.
@@ -802,11 +686,9 @@ class QuestModel:
             else:
                 eval_examples = [InputExample(i, text, None, 0) for i, text in enumerate(to_predict)]
         if args["sliding_window"]:
-            eval_dataset, window_counts = self.make_dataset(eval_examples, evaluate=True, no_cache=True)
+            eval_dataset, window_counts = make_dataset(eval_examples, self.tokenizer, self.args, evaluate=True, no_cache=True)
         else:
-            eval_dataset = self.make_dataset(
-                eval_examples, evaluate=True, multi_label=multi_label, no_cache=True
-            )
+            eval_dataset = make_dataset(eval_examples, self.tokenizer, self.args, evaluate=True, multi_label=multi_label, no_cache=True)
 
         eval_sampler = SequentialSampler(eval_dataset)
         eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args["eval_batch_size"])
