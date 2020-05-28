@@ -61,7 +61,6 @@ def make_dataset(
             sep_token_extra=bool(config["model_type"] in ["roberta", "camembert", "xlmroberta"]),
             # PAD on the left for XLNet
             pad_on_left=bool(config["model_type"] in ["xlnet"]),
-            pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
             pad_token_segment_id=4 if config["model_type"] in ["xlnet"] else 0,
             process_count=process_count,
             multi_label=multi_label,

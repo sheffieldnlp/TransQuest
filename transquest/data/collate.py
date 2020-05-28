@@ -33,10 +33,7 @@ def _convert_example_to_feature(
         pad_token=0,
         sequence_a_segment_id=0,
         sequence_b_segment_id=1,
-        cls_token_segment_id=1,
-        pad_token_segment_id=0,
         mask_padding_with_zero=True,
-        sep_token_extra=False
 ):
     example, max_seq_length, tokenizer, output_mode, cls_token_at_end, cls_token, sep_token, cls_token_segment_id, pad_on_left, pad_token_segment_id, sep_token_extra, multi_label, stride = example_row
 
@@ -129,11 +126,7 @@ def _convert_example_to_feature_sliding_window(
         example_row,
         pad_token=0,
         sequence_a_segment_id=0,
-        sequence_b_segment_id=1,
-        cls_token_segment_id=1,
-        pad_token_segment_id=0,
         mask_padding_with_zero=True,
-        sep_token_extra=False,
 ):
     example, max_seq_length, tokenizer, output_mode, cls_token_at_end, cls_token, sep_token, cls_token_segment_id, pad_on_left, pad_token_segment_id, sep_token_extra, multi_label, stride = example_row
 
@@ -145,7 +138,6 @@ def _convert_example_to_feature_sliding_window(
 
     tokens_a = tokenizer.tokenize(example.text_a)
 
-    special_tokens_count = 3 if sep_token_extra else 2
     if len(tokens_a) > bucket_size:
         token_sets = [tokens_a[i:i + bucket_size] for i in range(0, len(tokens_a), stride)]
     else:
@@ -236,12 +228,8 @@ def convert_examples_to_features(
         pad_on_left=False,
         cls_token="[CLS]",
         sep_token="[SEP]",
-        pad_token=0,
-        sequence_a_segment_id=0,
-        sequence_b_segment_id=1,
         cls_token_segment_id=1,
         pad_token_segment_id=0,
-        mask_padding_with_zero=True,
         process_count=cpu_count() - 2,
         multi_label=False,
         silent=False,
