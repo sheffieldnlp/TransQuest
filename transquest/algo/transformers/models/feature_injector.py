@@ -67,8 +67,6 @@ class Convolution(Combinator):
         self.stride = 3
         self.out_conv_size = self.compute_conv_output_size(self.hidden_dim)
         self.out_pool_size = self.compute_conv_output_size(self.out_conv_size)
-        print(self.out_conv_size)
-        print(self.out_pool_size)
 
         self.conv = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=8, stride=3)
         self.pool = nn.MaxPool1d(kernel_size=8, stride=3)
