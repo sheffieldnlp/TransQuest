@@ -70,15 +70,21 @@ class Convolution(Combinator):
 
         self.conv = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=8, stride=3)
         self.pool = nn.MaxPool1d(kernel_size=8, stride=3)
-        self.out_proj = nn.Linear(self.out_pool_size, self.num_labels)
+        self.dense = nn.Linear(self.out_pool_size + self.num_features, self.out_pool_size + self.num_features)
+        self.out_proj = nn.Linear(self.out_pool_size + self.num_features, self.num_labels)
 
     def forward(self, x, features_inject):
         features_inject = self.prepare_features_inject(features_inject)
         assert features_inject.shape[1] == self.num_features
-        x = torch.cat((x, features_inject), dim=1)
+
         x = torch.unsqueeze(x, dim=1)
         x = self.conv(x)
         x = self.pool(x)
+        x = torch.tanh(x)
+        x = torch.squeeze(x, dim=1)
+
+        x = torch.cat((x, features_inject), dim=1)
+        x = self.dense(x)
         x = torch.tanh(x)
         x = self.out_proj(x)
         return x
