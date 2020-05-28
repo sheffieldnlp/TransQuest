@@ -23,9 +23,20 @@ from multiprocessing import Pool, cpu_count
 from tqdm.auto import tqdm
 
 from transquest.data.containers import InputFeatures
+from transquest.data.containers import InputExampleSent
+from transquest.data.containers import InputExampleWord
+from transquest.data.mapping_tokens_bpe import map_tokens_bpe
 
 
 csv.field_size_limit(2147483647)
+
+
+def _get_labels(example, pieces, cls_token_at_end=False):
+    tokens = example.text_a.split()
+    labels = example.label
+    labels = map_tokens_bpe(tokens, pieces, labels)
+    labels = labels + [0]  # sep token
+    return labels + [0] if cls_token_at_end else [0] + labels
 
 
 def _convert_example_to_feature(
@@ -97,10 +108,12 @@ def _convert_example_to_feature(
         input_ids = ([pad_token] * padding_length) + input_ids
         input_mask = ([0 if mask_padding_with_zero else 1] * padding_length) + input_mask
         segment_ids = ([pad_token_segment_id] * padding_length) + segment_ids
+        label = ([pad_token] * padding_length) + _get_labels(example, tokens_a, cls_token_at_end=cls_token_at_end) if type(example) is InputExampleWord else example.label
     else:
         input_ids = input_ids + ([pad_token] * padding_length)
         input_mask = input_mask + ([0 if mask_padding_with_zero else 1] * padding_length)
         segment_ids = segment_ids + ([pad_token_segment_id] * padding_length)
+        label = _get_labels(example, tokens_a, cls_token_at_end=cls_token_at_end) + ([pad_token] * padding_length) if type(example) is InputExampleWord else example.label
 
     assert len(input_ids) == max_seq_length
     assert len(input_mask) == max_seq_length
@@ -117,7 +130,7 @@ def _convert_example_to_feature(
         input_ids=input_ids,
         input_mask=input_mask,
         segment_ids=segment_ids,
-        label_id=example.label,
+        label_id=label,
         features_inject=example.features_inject,
     )
 

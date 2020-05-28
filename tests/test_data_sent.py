@@ -14,7 +14,7 @@ test_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.join(test_dir, '../data')
 
 
-class TestData(unittest.TestCase):
+class TestDataSent(unittest.TestCase):
 
     train_tsv = os.path.join(data_dir, 'toy', 'toy.tsv')  # TODO: This is common between the tests, extract
     test_tsv = os.path.join(data_dir, 'toy', 'toy.tsv')

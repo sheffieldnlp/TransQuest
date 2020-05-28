@@ -1,7 +1,7 @@
 from collections import OrderedDict
 
 
-class InputExample(object):
+class InputExample:
     """A single training/test example for simple sequence classification."""
 
     def __init__(self, guid, text_a, text_b=None, label=None):
@@ -21,8 +21,22 @@ class InputExample(object):
         self.guid = guid
         self.text_a = text_a
         self.text_b = text_b
-        self.features_inject = OrderedDict()  # TODO: add method for setting features
         self.label = label
+        self.features_inject = OrderedDict()  # TODO: add method for setting features
+
+
+class InputExampleSent(InputExample):  # TODO: use this for sentence-level
+
+    def __init__(self, guid, text_a, text_b=None, label=None):
+        super(InputExampleSent, self).__init__(guid, text_a, text_b=text_b, label=label)
+        assert type(self.label) is float or type(self.label) is int
+
+
+class InputExampleWord(InputExample):
+    def __init__(self, guid, text_a, text_b=None, label=None):
+        super(InputExampleWord, self).__init__(guid, text_a, text_b=text_b, label=label)
+        assert type(self.label) is list
+        self.text_b = None
 
 
 class InputFeatures(object):
