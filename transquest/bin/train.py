@@ -29,7 +29,10 @@ def train_model(train_set, config, n_fold=None, test_size=None, return_model=Fal
     else:
         train_n = train_set
         eval_df_n = None
-    model.train_model(train_n, eval_df=eval_df_n, pearson_corr=pearson_corr, spearman_corr=spearman_corr, mae=mean_absolute_error)
+    if config['regression']:
+        model.train_model(train_n, eval_df=eval_df_n, pearson_corr=pearson_corr, spearman_corr=spearman_corr, mae=mean_absolute_error)
+    else:
+        model.train_model(train_n, eval_df=eval_df_n)
     if return_model:
         return model
 
@@ -37,7 +40,10 @@ def train_model(train_set, config, n_fold=None, test_size=None, return_model=Fal
 def evaluate_model(test_set, config, model=None):
     if model is None:
         model = QuestModel(config['model_type'], config['best_model_dir'], num_labels=1, use_cuda=torch.cuda.is_available(), args=config)
-    _, model_outputs = model.eval_model(test_set, pearson_corr=pearson_corr, spearman_corr=spearman_corr, mae=mean_absolute_error)
+    if config['regression']:  # TODO: this is repeated
+        _, model_outputs = model.eval_model(test_set, pearson_corr=pearson_corr, spearman_corr=spearman_corr, mae=mean_absolute_error)
+    else:
+        _, model_outputs = model.eval_model(test_set)
     return model_outputs
 
 

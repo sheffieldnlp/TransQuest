@@ -9,7 +9,6 @@ from sklearn.metrics import mean_absolute_error
 from transquest.data.normalizer import un_fit
 from transquest.util.draw import draw_scatterplot
 
-from transquest.data.read_dataframe import read_data_file
 from transquest.data.load_config import load_config
 
 
@@ -27,7 +26,7 @@ def main():
         config['MODEL_TYPE'], config['best_model_dir'], num_labels=1, use_cuda=torch.cuda.is_available(), args=config
     )
     test = read_data_file(args.test_file)
-    result, model_outputs, wrong_predictions = model.eval_model(test, pearson_corr=pearson_corr,
+    result, model_outputs = model.eval_model(test, pearson_corr=pearson_corr,
                                                                 spearman_corr=spearman_corr,
                                                                 mae=mean_absolute_error)
     test['predictions'] = model_outputs

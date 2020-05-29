@@ -334,7 +334,7 @@ class QuestModel:
                         and global_step % args["evaluate_during_training_steps"] == 0
                     ):
                         # Only evaluate when single GPU otherwise metrics may not average well
-                        results, _, _ = self.eval_model(
+                        results, _ = self.eval_model(
                             eval_df, verbose=verbose and args["evaluate_during_training_verbose"], silent=True, **kwargs
                         )
                         for key, value in results.items():
@@ -499,7 +499,7 @@ class QuestModel:
                 outputs = model(**inputs)
                 tmp_eval_loss, logits = outputs[:2]
 
-                if multi_label:
+                if not self.args['regression']:
                     logits = logits.sigmoid()
                 eval_loss += tmp_eval_loss.mean().item()
 
@@ -514,14 +514,19 @@ class QuestModel:
 
         eval_loss = eval_loss / nb_eval_steps
 
-        if not multi_label and args["regression"] is True:
+        if args['regression']:
             preds = np.squeeze(preds)
-            model_outputs = preds
-        else:
-            model_outputs = preds
+        model_outputs = preds
 
-            if not multi_label:
-                preds = np.argmax(preds, axis=1)
+        if not args['regression']:
+            def _remove_padding(a, mask):
+                res = []
+                for i, arr in enumerate(a):
+                    res.extend(arr[np.nonzero(mask[i])].squeeze())
+                return res
+            preds = np.argmax(preds, axis=2)
+            preds = _remove_padding(preds, inputs['attention_mask'])
+            out_label_ids = _remove_padding(out_label_ids, inputs['attention_mask'])
 
         result = self.compute_metrics(preds, out_label_ids, **kwargs)
         result["eval_loss"] = eval_loss
@@ -555,19 +560,14 @@ class QuestModel:
         for metric, func in kwargs.items():
             extra_metrics[metric] = func(labels, preds)
 
-        if multi_label:
-            label_ranking_score = label_ranking_average_precision_score(labels, preds)
-            return {**{"LRAP": label_ranking_score}, **extra_metrics}
-        elif self.args["regression"]:
+        if self.args['regression']:
             return {**extra_metrics}
 
         mcc = matthews_corrcoef(labels, preds)
 
         if self.model.num_labels == 2:
             tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
-            return (
-                {**{"mcc": mcc, "tp": tp, "tn": tn, "fp": fp, "fn": fn}, **extra_metrics},
-            )
+            return {**{"mcc": mcc, "tp": tp, "tn": tn, "fp": fp, "fn": fn}, **extra_metrics}
         else:
             return {**{"mcc": mcc}, **extra_metrics}
 

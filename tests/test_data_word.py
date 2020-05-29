@@ -5,8 +5,6 @@ from transquest.data.mapping_tokens_bpe import map_tokens_bpe
 from transquest.data.load_config import load_config
 from transquest.data.dataset import DatasetWordLevel
 
-from transquest.algo.transformers.run_model import QuestModel
-
 from tests.utils import DataWord as d
 
 test_dir = os.path.dirname(os.path.realpath(__file__))
