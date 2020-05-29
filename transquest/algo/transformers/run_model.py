@@ -488,6 +488,7 @@ class QuestModel:
         nb_eval_steps = 0
         preds = None
         out_label_ids = None
+        masks = None
         model.eval()
 
         for batch in tqdm(eval_dataloader, disable=args["silent"] or silent):
@@ -508,9 +509,11 @@ class QuestModel:
             if preds is None:
                 preds = logits.detach().cpu().numpy()
                 out_label_ids = inputs["labels"].detach().cpu().numpy()
+                masks = inputs["attention_mask"].detach().cpu().numpy()
             else:
                 preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
+                masks = np.append(masks, inputs["attention_mask"].detach().cpu().numpy(), axis=0)
 
         eval_loss = eval_loss / nb_eval_steps
 
@@ -525,8 +528,8 @@ class QuestModel:
                     res.extend(arr[np.nonzero(mask[i])].squeeze())
                 return res
             preds = np.argmax(preds, axis=2)
-            preds = _remove_padding(preds, inputs['attention_mask'])
-            out_label_ids = _remove_padding(out_label_ids, inputs['attention_mask'])
+            preds = _remove_padding(preds, masks)
+            out_label_ids = _remove_padding(out_label_ids, masks)
 
         result = self.compute_metrics(preds, out_label_ids, **kwargs)
         result["eval_loss"] = eval_loss
