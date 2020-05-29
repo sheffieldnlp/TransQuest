@@ -2,7 +2,11 @@
 
 def map_tokens_bpe(tokens, pieces, labels, bpe_sep='▁'):
     pieces = [p.replace(bpe_sep, '') for p in pieces]
-    assert ''.join(pieces) == ''.join(tokens)
+    try:
+        assert ''.join(pieces) == ''.join(tokens)
+    except AssertionError:
+        print(tokens)
+        print(pieces)
     token_positions = {}
     pos_counter = 0
     for i, token in enumerate(tokens):
