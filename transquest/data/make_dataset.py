@@ -44,8 +44,6 @@ def make_dataset(
     else:
         if verbose:
             print(f"Converting to features started. Cache is not used.")
-            if config["sliding_window"]:
-                print("Sliding window enabled")
         features = convert_examples_to_features(
             examples,
             config["max_seq_length"],
@@ -66,19 +64,11 @@ def make_dataset(
             multi_label=multi_label,
             silent=config["silent"] or silent,
             use_multiprocessing=config["use_multiprocessing"],
-            sliding_window=config["sliding_window"],
             flatten=not evaluate,
             stride=config["stride"],
         )
-        if verbose and config["sliding_window"]:
-            print(f"{len(features)} features created from {len(examples)} samples.")
-
         if not no_cache:
             torch.save(features, cached_features_file)
-
-    if config["sliding_window"] and evaluate:
-        window_counts = [len(sample) for sample in features]
-        features = [feature for feature_set in features for feature in feature_set]
 
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
     all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
@@ -102,7 +92,4 @@ def make_dataset(
     else:
         dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
 
-    if config["sliding_window"] and evaluate:
-        return dataset, window_counts
-    else:
-        return dataset
+    return dataset

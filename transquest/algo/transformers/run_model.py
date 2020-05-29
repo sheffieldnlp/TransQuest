@@ -137,7 +137,6 @@ class QuestModel:
         self.results = {}
 
         self.args = {
-            "sliding_window": False,
             "tie_value": 1,
             "stride": 0.8,
             "regression": False,
@@ -532,10 +531,7 @@ class QuestModel:
         eval_examples = load_examples(eval_df)
         print('Loaded {} examples for evaluation'.format(len(eval_examples)))
 
-        if args["sliding_window"]:
-            eval_dataset, window_counts = make_dataset(eval_examples, self.tokenizer, self.args, evaluate=True, verbose=verbose, silent=silent)
-        else:
-            eval_dataset = make_dataset(eval_examples, self.tokenizer, self.args, evaluate=True, verbose=verbose, silent=silent)
+        eval_dataset = make_dataset(eval_examples, self.tokenizer, self.args, evaluate=True, verbose=verbose, silent=silent)
         os.makedirs(eval_output_dir, exist_ok=True)
 
         eval_sampler = SequentialSampler(eval_dataset)
@@ -571,30 +567,7 @@ class QuestModel:
 
         eval_loss = eval_loss / nb_eval_steps
 
-        if args["sliding_window"]:
-            count = 0
-            window_ranges = []
-            for n_windows in window_counts:
-                window_ranges.append([count, count + n_windows])
-                count += n_windows
-
-            preds = [preds[window_range[0] : window_range[1]] for window_range in window_ranges]
-            out_label_ids = [
-                out_label_ids[i] for i in range(len(out_label_ids)) if i in [window[0] for window in window_ranges]
-            ]
-
-            model_outputs = preds
-
-            preds = [np.argmax(pred, axis=1) for pred in preds]
-            final_preds = []
-            for pred_row in preds:
-                mode_pred, counts = mode(pred_row)
-                if len(counts) > 1 and counts[0] == counts[1]:
-                    final_preds.append(args["tie_value"])
-                else:
-                    final_preds.append(mode_pred[0])
-            preds = np.array(final_preds)
-        elif not multi_label and args["regression"] is True:
+        if not multi_label and args["regression"] is True:
             preds = np.squeeze(preds)
             model_outputs = preds
         else:
@@ -685,10 +658,7 @@ class QuestModel:
                 eval_examples = [InputExample(i, text[0], text[1], 0) for i, text in enumerate(to_predict)]
             else:
                 eval_examples = [InputExample(i, text, None, 0) for i, text in enumerate(to_predict)]
-        if args["sliding_window"]:
-            eval_dataset, window_counts = make_dataset(eval_examples, self.tokenizer, self.args, evaluate=True, no_cache=True)
-        else:
-            eval_dataset = make_dataset(eval_examples, self.tokenizer, self.args, evaluate=True, multi_label=multi_label, no_cache=True)
+        eval_dataset = make_dataset(eval_examples, self.tokenizer, self.args, evaluate=True, multi_label=multi_label, no_cache=True)
 
         eval_sampler = SequentialSampler(eval_dataset)
         eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args["eval_batch_size"])
@@ -723,27 +693,7 @@ class QuestModel:
 
         eval_loss = eval_loss / nb_eval_steps
 
-        if args["sliding_window"]:
-            count = 0
-            window_ranges = []
-            for n_windows in window_counts:
-                window_ranges.append([count, count + n_windows])
-                count += n_windows
-
-            preds = [preds[window_range[0] : window_range[1]] for window_range in window_ranges]
-
-            model_outputs = preds
-
-            preds = [np.argmax(pred, axis=1) for pred in preds]
-            final_preds = []
-            for pred_row in preds:
-                mode_pred, counts = mode(pred_row)
-                if len(counts) > 1 and counts[0] == counts[1]:
-                    final_preds.append(args["tie_value"])
-                else:
-                    final_preds.append(mode_pred[0])
-            preds = np.array(final_preds)
-        elif not multi_label and args["regression"] is True:
+        if not multi_label and args["regression"] is True:
             preds = np.squeeze(preds)
             model_outputs = preds
         else:
