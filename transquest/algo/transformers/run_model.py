@@ -23,42 +23,10 @@ from sklearn.metrics import (
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
 from tqdm.auto import trange, tqdm
-from transformers import AdamW, get_linear_schedule_with_warmup, FlaubertForSequenceClassification
-from transformers import (
-    BertConfig,
-    BertTokenizer,
-    XLNetConfig,
-    XLNetTokenizer,
-    XLMConfig,
-    XLMTokenizer,
-    RobertaConfig,
-    RobertaTokenizer,
-    DistilBertConfig,
-    DistilBertTokenizer,
-    AlbertConfig,
-    AlbertTokenizer,
-    CamembertConfig,
-    CamembertTokenizer,
-    XLMRobertaConfig,
-    XLMRobertaTokenizer,
-    FlaubertConfig,
-    FlaubertTokenizer,
-)
 
-from transquest.algo.transformers.models.albert_model import AlbertForSequenceClassification
-from transquest.algo.transformers.models.bert_model import BertForSequenceClassification
-from transquest.algo.transformers.models.camembert_model import CamembertForSequenceClassification
-from transquest.algo.transformers.models.distilbert_model import DistilBertForSequenceClassification
-from transquest.algo.transformers.models.roberta_model import RobertaForSequenceClassification
-from transquest.algo.transformers.models.xlm_model import XLMForSequenceClassification
-from transquest.algo.transformers.models.xlm_roberta_model import XLMRobertaForSequenceClassification
-from transquest.algo.transformers.models.xlm_roberta_model_inject import XLMRobertaForSequenceClassificationInject
-from transquest.algo.transformers.models.xlm_roberta_model_inject import XLMRobertaInjectConfig
-from transquest.algo.transformers.models.xlnet_model import XLNetForSequenceClassification
-from transquest.data.containers import InputExample
+from transformers import AdamW, get_linear_schedule_with_warmup
 
-from transquest.data.read_dataframe import load_examples
-from transquest.data.make_dataset import make_dataset
+from transquest.algo.model_classes import model_classes
 
 
 try:
@@ -87,19 +55,6 @@ class QuestModel:
             **kwargs (optional): For providing proxies, force_download, resume_download, cache_dir and other options specific to the 'from_pretrained' implementation where this will be supplied.
         """  # noqa: ignore flake8"
 
-        MODEL_CLASSES = {
-            "bert": (BertConfig, BertForSequenceClassification, BertTokenizer),
-            "xlnet": (XLNetConfig, XLNetForSequenceClassification, XLNetTokenizer),
-            "xlm": (XLMConfig, XLMForSequenceClassification, XLMTokenizer),
-            "roberta": (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer),
-            "distilbert": (DistilBertConfig, DistilBertForSequenceClassification, DistilBertTokenizer),
-            "albert": (AlbertConfig, AlbertForSequenceClassification, AlbertTokenizer),
-            "camembert": (CamembertConfig, CamembertForSequenceClassification, CamembertTokenizer),
-            "xlmroberta": (XLMRobertaConfig, XLMRobertaForSequenceClassification, XLMRobertaTokenizer),
-            "xlmrobertainject": (XLMRobertaInjectConfig, XLMRobertaForSequenceClassificationInject, XLMRobertaTokenizer),
-            "flaubert": (FlaubertConfig, FlaubertForSequenceClassification, FlaubertTokenizer),
-        }
-
         if args and 'running_seed' in args:
             print('Seed is {}'.format(args['running_seed']))
             random.seed(args['running_seed'])
@@ -108,7 +63,7 @@ class QuestModel:
             if 'n_gpu' in args and args['n_gpu'] > 0:
                 torch.cuda.manual_seed_all(args['running_seed'])
 
-        config_class, model_class, tokenizer_class = MODEL_CLASSES[model_type]
+        config_class, model_class, tokenizer_class = model_classes[model_type]
         self.config = config_class.from_pretrained(model_name, **args, **kwargs)
         self.num_labels = self.config.num_labels
         self.weight = weight
@@ -166,7 +121,7 @@ class QuestModel:
 
     def train_model(
         self,
-        train_df,
+        dataset,
         multi_label=False,
         output_dir=None,
         show_running_loss=True,
@@ -215,13 +170,9 @@ class QuestModel:
 
         self._move_model_to_device()
 
-        train_examples = load_examples(train_df)
-
-        train_dataset = make_dataset(train_examples, self.tokenizer, self.args, verbose=verbose)
-
         os.makedirs(output_dir, exist_ok=True)
         global_step, tr_loss = self.train(
-            train_dataset,
+            dataset,
             output_dir,
             multi_label=multi_label,
             show_running_loss=show_running_loss,
@@ -440,7 +391,7 @@ class QuestModel:
                 self._save_model(output_dir_current, model=model)
 
             if args["evaluate_during_training"]:
-                results, _, _ = self.eval_model(
+                results, _ = self.eval_model(
                     eval_df, verbose=verbose and args["evaluate_during_training_verbose"], silent=True, **kwargs
                 )
 
@@ -479,7 +430,7 @@ class QuestModel:
 
         return global_step, tr_loss / global_step
 
-    def eval_model(self, eval_df, multi_label=False, output_dir=None, verbose=True, silent=False, **kwargs):
+    def eval_model(self, dataset, multi_label=False, output_dir=None, verbose=True, silent=False, **kwargs):
         """
         Evaluates the model on eval_df. Saves results to output_dir.
 
@@ -503,19 +454,19 @@ class QuestModel:
 
         self._move_model_to_device()
 
-        print('Evaluation set contains {} examples'.format(len(eval_df)))
+        print('Evaluation set contains {} examples'.format(len(dataset)))
 
-        result, model_outputs, wrong_preds = self.evaluate(
-            eval_df, output_dir, multi_label=multi_label, verbose=verbose, silent=silent, **kwargs
+        result, model_outputs = self.evaluate(
+            dataset, output_dir, multi_label=multi_label, verbose=verbose, silent=silent, **kwargs
         )
         self.results.update(result)
 
         if verbose:
             print(self.results)
 
-        return result, model_outputs, wrong_preds
+        return result, model_outputs
 
-    def evaluate(self, eval_df, output_dir, multi_label=False, prefix="", verbose=True, silent=False, **kwargs):
+    def evaluate(self, dataset, output_dir, multi_label=False, prefix="", verbose=True, silent=False, **kwargs):
         """
         Evaluates the model on eval_df.
 
@@ -528,14 +479,10 @@ class QuestModel:
         eval_output_dir = output_dir
 
         results = {}
-        eval_examples = load_examples(eval_df)
-        print('Loaded {} examples for evaluation'.format(len(eval_examples)))
-
-        eval_dataset = make_dataset(eval_examples, self.tokenizer, self.args, evaluate=True, verbose=verbose, silent=silent)
         os.makedirs(eval_output_dir, exist_ok=True)
 
-        eval_sampler = SequentialSampler(eval_dataset)
-        eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args["eval_batch_size"])
+        eval_sampler = SequentialSampler(dataset)
+        eval_dataloader = DataLoader(dataset, sampler=eval_sampler, batch_size=args["eval_batch_size"])
 
         eval_loss = 0.0
         nb_eval_steps = 0
@@ -576,8 +523,7 @@ class QuestModel:
             if not multi_label:
                 preds = np.argmax(preds, axis=1)
 
-        print('Computing metric on {} examples'.format(len(eval_examples)))
-        result, wrong = self.compute_metrics(preds, out_label_ids, eval_examples, **kwargs)
+        result = self.compute_metrics(preds, out_label_ids, **kwargs)
         result["eval_loss"] = eval_loss
         results.update(result)
 
@@ -586,16 +532,15 @@ class QuestModel:
             for key in sorted(result.keys()):
                 writer.write("{} = {}\n".format(key, str(result[key])))
 
-        return results, model_outputs, wrong
+        return results, model_outputs
 
-    def compute_metrics(self, preds, labels, eval_examples, multi_label=False, **kwargs):
+    def compute_metrics(self, preds, labels, multi_label=False, **kwargs):
         """
         Computes the evaluation metrics for the model predictions.
 
         Args:
             preds: Model predictions
             labels: Ground truth labels
-            eval_examples: List of examples on which evaluation was performed
             **kwargs: Additional metrics that should be used. Pass in the metrics as keyword arguments (name of metric: function to use). E.g. f1=sklearn.metrics.f1_score.
                         A metric function should take in two parameters. The first parameter will be the true labels, and the second parameter will be the predictions.
 
@@ -610,15 +555,11 @@ class QuestModel:
         for metric, func in kwargs.items():
             extra_metrics[metric] = func(labels, preds)
 
-        mismatched = labels != preds
-
-        wrong = [i for (i, v) in zip(eval_examples, mismatched) if v.any()]
-
         if multi_label:
             label_ranking_score = label_ranking_average_precision_score(labels, preds)
-            return {**{"LRAP": label_ranking_score}, **extra_metrics}, wrong
+            return {**{"LRAP": label_ranking_score}, **extra_metrics}
         elif self.args["regression"]:
-            return {**extra_metrics}, wrong
+            return {**extra_metrics}
 
         mcc = matthews_corrcoef(labels, preds)
 
@@ -626,12 +567,11 @@ class QuestModel:
             tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
             return (
                 {**{"mcc": mcc, "tp": tp, "tn": tn, "fp": fp, "fn": fn}, **extra_metrics},
-                wrong,
             )
         else:
-            return {**{"mcc": mcc}, **extra_metrics}, wrong
+            return {**{"mcc": mcc}, **extra_metrics}
 
-    def predict(self, to_predict, multi_label=False):
+    def predict(self, dataset, multi_label=False):
         """
         Performs predictions on a list of text.
 
@@ -649,19 +589,8 @@ class QuestModel:
 
         self._move_model_to_device()
 
-        if multi_label:
-            eval_examples = [
-                InputExample(i, text, None, [0 for i in range(self.num_labels)]) for i, text in enumerate(to_predict)
-            ]
-        else:
-            if isinstance(to_predict[0], list):
-                eval_examples = [InputExample(i, text[0], text[1], 0) for i, text in enumerate(to_predict)]
-            else:
-                eval_examples = [InputExample(i, text, None, 0) for i, text in enumerate(to_predict)]
-        eval_dataset = make_dataset(eval_examples, self.tokenizer, self.args, evaluate=True, multi_label=multi_label, no_cache=True)
-
-        eval_sampler = SequentialSampler(eval_dataset)
-        eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args["eval_batch_size"])
+        eval_sampler = SequentialSampler(dataset)
+        eval_dataloader = DataLoader(dataset, sampler=eval_sampler, batch_size=args["eval_batch_size"])
 
         eval_loss = 0.0
         nb_eval_steps = 0
