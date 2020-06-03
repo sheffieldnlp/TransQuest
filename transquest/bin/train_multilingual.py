@@ -21,7 +21,7 @@ def main():
     parser.add_argument('--test_path', required=True)
     parser.add_argument('--train_features_path', required=False, default=None)
     parser.add_argument('--test_features_path', required=False, default=None)
-    parser.add_argument('--lang_pairs', required=False, default=None)
+    parser.add_argument('--lang_pairs', nargs='+', required=False, default=None)
     parser.add_argument('--test_lang_pair', required=False, default=None)
     parser.add_argument('--output_dir', required=True)
     parser.add_argument('--config', required=True)
