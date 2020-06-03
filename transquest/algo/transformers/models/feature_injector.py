@@ -20,6 +20,51 @@ class Combinator(nn.Module):
         return features_inject
 
 
+class Outer(Combinator):
+
+    def __init__(self, config):
+        super(Outer, self).__init__(config)
+        self.hidden_dim = config.hidden_size
+        self.out_proj = nn.Linear(self.hidden_dim * self.num_features, self.num_labels)
+
+    def forward(self, x, features_inject):
+        features_inject = self.prepare_features_inject(features_inject)
+        x = torch.einsum('bi,bj->bij', (x, features_inject))
+        x = torch.flatten(x, start_dim=1)
+        x = self.out_proj(x)
+        return x
+
+
+class OuterReducer(Combinator):
+
+    def __init__(self, config):
+        super(OuterReducer, self).__init__(config)
+        self.hidden_dim = config.hidden_size
+        self.reducer = nn.Sequential(
+                nn.Linear(
+                    self.hidden_dim * self.num_features,
+                    int((self.hidden_dim * self.num_features) / 2)
+                    ),
+                self.dropout,
+                nn.ReLU(inplace=True),
+                nn.Linear(
+                    int((self.hidden_dim * self.num_features) / 2),
+                    int((self.hidden_dim * self.num_features) / 4)
+                    ),
+                self.dropout,
+                nn.ReLU(inplace=True),
+                )
+        self.out_proj = nn.Linear(int((self.hidden_dim * self.num_features) / 4), self.num_labels)
+
+    def forward(self, x, features_inject):
+        features_inject = self.prepare_features_inject(features_inject)
+        x = torch.einsum('bi,bj->bij', (x, features_inject))
+        x = torch.flatten(x, start_dim=1)
+        x = self.reducer(x)
+        x = self.out_proj(x)
+        return x
+
+
 class Reduce(Combinator):
 
     def __init__(self, config):
@@ -99,6 +144,8 @@ class FeatureInjector(nn.Module):
         'reduce': Reduce,
         'concat': Concat,
         'conv': Convolution,
+        'outer': Outer,
+        'outer_reducer': OuterReducer,
     }
 
     def __init__(self, config):
