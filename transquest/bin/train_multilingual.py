@@ -38,7 +38,7 @@ def main():
 
     test_set = DatasetSentLevel(config, evaluate=True)
     test_path, test_features_path = build_paths(args.test_path, args.test_lang_pair, args.test_features_path)
-    test_data = test_set.make_dataset(args.test_path, features_path=args.test_features_path)
+    test_data = test_set.make_dataset(test_path, features_path=test_features_path)
     test_tsv = test_set.read(test_path, features_path=test_features_path)
 
     train_cycle(train_data, test_data, test_tsv, config, args.output_dir, args.test_size)
