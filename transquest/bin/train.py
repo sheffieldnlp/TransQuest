@@ -107,8 +107,8 @@ def main():
     config = load_config(args)
     train_set = DatasetSentLevel(config, evaluate=False)
     test_set = DatasetSentLevel(config, evaluate=True)
-    train_data = train_set.make_dataset(args.train_path, )
-    test_data = test_set.make_dataset(args.test_path, features_path=args.train_features_path)
+    train_data = train_set.make_dataset(args.train_path, features_path=args.train_features_path)
+    test_data = test_set.make_dataset(args.test_path, features_path=args.test_features_path)
     test_tsv = test_set.read(args.test_path, features_path=args.test_features_path)
     train_cycle(train_data, test_data, test_tsv, config, args.output_dir, args.test_size)
 
