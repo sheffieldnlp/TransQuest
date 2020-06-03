@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from transquest.bin.train import train_model  # TODO: this method should be in a different place
+from transquest.bin.util import train_model  # TODO: this method should be in a different place
 from transquest.bin.train import train_cycle  # TODO: this method should be in a different place
 from transquest.data.load_config import load_config
 from transquest.data.dataset import DatasetSentLevel
