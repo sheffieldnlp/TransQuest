@@ -75,11 +75,11 @@ def train_cycle(train_set, test_sets, config, output_dir, test_size):
         test_sets = evaluate_model(test_sets, config, run, model=model)
 
     runs = 1 if config['n_fold'] < 2 else config['n_fold']
-    correlations = defaultdict(list)
 
     for lang_pair, test_set in test_sets.items():
         test_set.df = un_fit(test_set.df, 'labels')
 
+        correlations = defaultdict(list)
         for r in range(runs):
             test_set.df = un_fit(test_set.df, predictions_column(r))
             correlations['pearson'].append(pearsonr(test_set.df[predictions_column(r)], test_set.df['labels'])[0])
