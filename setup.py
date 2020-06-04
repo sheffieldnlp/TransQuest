@@ -38,7 +38,7 @@ setup(
         "console_scripts": [
             'tq-predict=transquest.bin.predict:main',
             'tq-train=transquest.bin.train:main',
-            'tq-train-multilingual=transquest.bin.train_multilingual:main',
+            'tq-train-multilingual=transquest.bin.train_multilingual:cli_main',
             'tq-train-word=transquest.bin.train_word_level:main',
         ]
     }
