@@ -39,3 +39,10 @@ class TestDataSent(unittest.TestCase):
         pieces = ['▁1934', '▁besucht', 'e', '▁José', '▁Ort', 'ega', '▁y', '▁G', 'asset', '▁Hus', 'ser', 'l', '▁in', '▁Freiburg', '▁', '.']
         labels = map_tokens_bpe(tokens, pieces, labels)
         assert len(labels) == len(pieces)
+
+    def test_maps_probas_to_bpe(self):
+        tokens = '1934 besuchte José Ortega y Gasset Husserl in Freiburg .'.split()
+        labels = [0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
+        pieces = ['▁1934', '▁besucht', 'e', '▁José', '▁Ort', 'ega', '▁y', '▁G', 'asset', '▁Hus', 'ser', 'l', '▁in', '▁Freiburg', '▁', '.']
+        labels = map_tokens_bpe(tokens, pieces, labels)
+        assert len(labels) == len(pieces)

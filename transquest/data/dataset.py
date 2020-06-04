@@ -174,10 +174,9 @@ class Dataset:
         input_ids = self._pad(input_ids, [pad_token] * padding_length)
         input_mask = self._pad(input_mask, [0 if self.mask_padding_with_zero else 1] * padding_length)
         segment_ids = self._pad(segment_ids, [self.pad_token_segment_id] * padding_length)
-        if type(example) is InputExampleWord:
-            label = self._pad(self._get_labels(example, tokens_a), ([pad_token] * padding_length))
-        else:
-            label = example.label
+
+        label = self._map_labels(example=example, bpe_tokens=tokens_a, padding=([pad_token] * padding_length))
+        features_inject = self._map_features(example=example, bpe_tokens=tokens_a)
 
         assert len(input_ids) == self.max_seq_length
         assert len(input_mask) == self.max_seq_length
@@ -188,7 +187,7 @@ class Dataset:
             input_mask=input_mask,
             segment_ids=segment_ids,
             label_id=label,
-            features_inject=example.features_inject,
+            features_inject=features_inject,
         )
 
     def _pad(self, seq, padding):
@@ -220,6 +219,12 @@ class Dataset:
         labels = map_tokens_bpe(tokens, pieces, labels)
         labels = labels + [0]  # sep token
         return labels + [0] if self.cls_token_at_end else [0] + labels
+
+    def _map_labels(self, **kwargs):
+        return
+
+    def _map_features(self, **kwargs):
+        return
 
 
 class DatasetWordLevel(Dataset):
@@ -259,6 +264,16 @@ class DatasetWordLevel(Dataset):
             assert len(labels_i) * 2 + 1 == len(tags)
             labels.append(labels_i)
         return labels
+
+    def _map_labels(self, example, bpe_tokens, padding):
+        labelled_tokens = example.text_a.split()
+        labels = example.label
+        labels = map_tokens_bpe(labelled_tokens, bpe_tokens, labels)
+        labels = labels + [0]  # sep token
+        return self._pad(labels + [0] if self.cls_token_at_end else [0] + labels, padding)
+
+    def _map_features(self, example, bpe_tokens):
+        pass
 
 
 class DatasetSentLevel(Dataset):
@@ -302,3 +317,9 @@ class DatasetSentLevel(Dataset):
                     for i, ex in enumerate(examples):
                         ex.features_inject[col] = values[i]
         return examples
+
+    def _map_labels(self, example, **kwargs):
+        return example.label
+
+    def _map_features(self, example, **kwargs):
+        return example.features_inject
