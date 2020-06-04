@@ -29,5 +29,7 @@ class DataWord:
     src_txt = os.path.join(data_dir, 'toy-word-level', 'toy.src')
     tgt_txt = os.path.join(data_dir, 'toy-word-level', 'toy.mt')
     config_path = os.path.join(data_dir, 'toy-word-level', 'toy.json')
+    features_path = os.path.join(data_dir, 'toy-word-level', 'toy.word_probas')
+    mt_path = os.path.join(data_dir, 'toy-word-level', 'toy.mt_out')
     out_dir = os.path.join(data_dir, 'toy-word-level', 'output')
     args = Args(config_path, out_dir)

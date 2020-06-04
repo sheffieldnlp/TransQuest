@@ -3,6 +3,8 @@ import numpy as np
 import torch
 import pandas as pd
 
+from collections import OrderedDict
+
 from multiprocessing import cpu_count
 from multiprocessing import Pool
 from tqdm.auto import tqdm
@@ -12,7 +14,7 @@ from transquest.data.normalizer import fit
 from transquest.data.containers import InputExampleSent
 from transquest.data.containers import InputExampleWord
 from transquest.data.containers import InputFeatures
-from transquest.data.mapping_tokens_bpe import map_tokens_bpe
+from transquest.data.mapping_tokens_bpe import map_pieces
 
 from transquest.algo.model_classes import model_classes
 
@@ -176,7 +178,8 @@ class Dataset:
         segment_ids = self._pad(segment_ids, [self.pad_token_segment_id] * padding_length)
 
         label = self._map_labels(example=example, bpe_tokens=tokens_a, padding=([pad_token] * padding_length))
-        features_inject = self._map_features(example=example, bpe_tokens=tokens_a)
+        features_inject = self._map_features(
+            example=example, bpe_tokens=tokens_a, padding=([pad_token] * padding_length))
 
         assert len(input_ids) == self.max_seq_length
         assert len(input_mask) == self.max_seq_length
@@ -213,13 +216,6 @@ class Dataset:
             else:
                 tokens_b.pop()
 
-    def _get_labels(self, example, pieces):
-        tokens = example.text_a.split()
-        labels = example.label
-        labels = map_tokens_bpe(tokens, pieces, labels)
-        labels = labels + [0]  # sep token
-        return labels + [0] if self.cls_token_at_end else [0] + labels
-
     def _map_labels(self, **kwargs):
         return
 
@@ -232,27 +228,38 @@ class DatasetWordLevel(Dataset):
     def __init__(self, config, evaluate=False):
         super().__init__(config, evaluate=evaluate)
 
-    def make_dataset(self, src_path, tgt_path, labels_path, no_cache=False, verbose=True):
-        src, tgt, labels = self.read(src_path, tgt_path, labels_path)
-        examples = self.load_examples(src, tgt, labels)
+    def make_dataset(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None, no_cache=False, verbose=True):
+        src, tgt, labels, features, mt_out = self.read(src_path, tgt_path, labels_path, features_path=features_path, mt_path=mt_path)
+        examples = self.load_examples(src, tgt, labels, features, mt_out)
         tensors = self.make_tensors(examples, no_cache=no_cache, verbose=verbose)
         return tensors
 
     @staticmethod
-    def load_examples(src, tgt, labels):
+    def load_examples(src, tgt, labels, features=None, mt_out=None):
         examples = [
             InputExampleWord(guid=i, text_a=text_b, label=label)
             for i, (text_a, text_b, label) in enumerate(
                 zip(src, tgt, labels)
             )
         ]
+        if features is not None:
+            for feature_name in features:
+                for i, ex in enumerate(examples):
+                    ex.features_inject[feature_name] = features[feature_name][i]
+                    ex.mt_tokens = mt_out[i]
         return examples
 
-    def read(self, src_path, tgt_path, labels_path):
+    def read(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None):
         labels = self._read_labels(labels_path)
         src = [l.strip() for l in open(src_path)]
         tgt = [l.strip() for l in open(tgt_path)]
-        return src, tgt, labels
+        mt_out = None
+        if mt_path is not None:
+            mt_out = [l.strip().split() for l in open(mt_path)]
+        features = dict()
+        for i, path in enumerate(features_path, start=1):
+            features['{}{}'.format(DEFAULT_FEATURE_NAME, i)] = [[float(s) for s in l.split()[:-1]] for l in open(path)]
+        return src, tgt, labels, features, mt_out
 
     @staticmethod
     def _read_labels(path):
@@ -268,12 +275,18 @@ class DatasetWordLevel(Dataset):
     def _map_labels(self, example, bpe_tokens, padding):
         labelled_tokens = example.text_a.split()
         labels = example.label
-        labels = map_tokens_bpe(labelled_tokens, bpe_tokens, labels)
+        labels = map_pieces(labelled_tokens, bpe_tokens, labels, method='first')
         labels = labels + [0]  # sep token
         return self._pad(labels + [0] if self.cls_token_at_end else [0] + labels, padding)
 
-    def _map_features(self, example, bpe_tokens):
-        pass
+    def _map_features(self, example, bpe_tokens, padding):
+        mapped = OrderedDict()
+        for feature in example.features_inject:
+            mapped_f = map_pieces(
+                example.mt_tokens, bpe_tokens, example.features_inject[feature], method='average', from_sep='@@')
+            mapped_f = mapped_f + [0]
+            mapped[feature] = self._pad(mapped_f + [0] if self.cls_token_at_end else [0] + mapped_f, padding)
+        return mapped
 
 
 class DatasetSentLevel(Dataset):
