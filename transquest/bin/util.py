@@ -82,7 +82,7 @@ def train_cycle(train, test, test_tsv, config, output_dir, test_size):
         plot_path = os.path.join(output_dir, 'results_{}.png'.format(r))
         draw_scatterplot(test_tsv, 'labels', predictions_column(r), plot_path, config['model_type'] + ' ' + config['model_name'])
 
-    preds_path = os.path.join(output_dir, 'results.tsv')
+    preds_path = os.path.join(output_dir, 'results.df')
     test_tsv.to_csv(preds_path, header=True, sep='\t', index=False, encoding='utf-8')
 
     for corr in ('pearson', 'spearman'):

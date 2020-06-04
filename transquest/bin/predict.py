@@ -27,21 +27,20 @@ def main():
         config['model_type'], args.model_dir, num_labels=1, use_cuda=torch.cuda.is_available(), args=config
     )
     test_set = DatasetSentLevel(config, evaluate=True)
-    test = test_set.make_dataset(args.test_file)
-    result, model_outputs = model.eval_model(test, pearson_corr=pearson_corr, spearman_corr=spearman_corr, mae=mean_absolute_error)
-
-    test_tsv = test_set.read(args.test_file, features_path=args.features_path)
-    test_tsv['predictions'] = model_outputs
-    test_tsv = un_fit(test_tsv, 'labels')
-    test_tsv = un_fit(test_tsv, 'predictions')
+    test_set.make_dataset(args.test_file)
+    result, model_outputs = model.eval_model(
+        test_set.tensor_dataset, pearson_corr=pearson_corr, spearman_corr=spearman_corr, mae=mean_absolute_error)
+    test_set.df['predictions'] = model_outputs
+    test_set.df = un_fit(test_set.df, 'labels')
+    test_set.df = un_fit(test_set.df, 'predictions')
 
     out_preds = os.path.join(args.output_dir, 'predictions')
     out_preds = '{}.{}.{}'.format(out_preds, config['model_type'], config['model_name'])
     out_scatter = os.path.join(args.output_dir, 'scatter')
     out_scatter = '{}.{}.{}'.format(out_scatter, config['model_type'], config['model_name'])
-    test_tsv.to_csv('{}.tsv'.format(out_preds), header=True, sep='\t', index=False, encoding='utf-8')
+    test_set.df.to_csv('{}.tsv'.format(out_preds), header=True, sep='\t', index=False, encoding='utf-8')
     draw_scatterplot(
-        test_tsv, 'labels', 'predictions', '{}.png'.format(out_scatter), config['model_type'] + ' ' + config['model_name'])
+        test_set.df, 'labels', 'predictions', '{}.png'.format(out_scatter), config['model_type'] + ' ' + config['model_name'])
 
 
 if __name__ == '__main__':

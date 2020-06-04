@@ -43,13 +43,17 @@ class Dataset:
         self.sep_token = self.tokenizer.sep_token
         self.sep_token_extra = False
 
+        self.df = None
+        self.examples = None
+        self.tensor_dataset = None
+
     def read(self, **kwargs):
         pass
 
     def load_examples(self, **kwargs):
         pass
 
-    def make_tensors(self, examples, no_cache=False, verbose=True):
+    def make_tensors(self, no_cache=False, verbose=True):
         if not no_cache:
             no_cache = self.config['no_cache']
 
@@ -59,7 +63,7 @@ class Dataset:
         cached_features_file = os.path.join(
             self.config['cache_dir'],
             'cached_{}_{}_{}_{}_{}'.format(
-                mode, self.config['model_type'], self.max_seq_length, self.config['num_labels'], len(examples),
+                mode, self.config['model_type'], self.max_seq_length, self.config['num_labels'], len(self.examples),
             ),
         )
 
@@ -73,7 +77,7 @@ class Dataset:
         else:
             if verbose:
                 print(f"Converting to features started. Cache is not used.")
-            features = self._convert_examples_to_features(examples)
+            features = self._convert_examples_to_features(self.examples)
             if not no_cache:
                 torch.save(features, cached_features_file)
 
@@ -95,8 +99,7 @@ class Dataset:
         tensors = [all_input_ids, all_input_mask, all_segment_ids, all_label_ids]
         if all_features is not None:
             tensors.append(all_features)
-        dataset = TensorDataset(*tensors)
-        return dataset
+        self.tensor_dataset = TensorDataset(*tensors)
 
     def _convert_examples_to_features(self, examples):
         """ Loads a data file into a list of `InputBatch`s
@@ -226,22 +229,21 @@ class DatasetWordLevel(Dataset):
 
     def __init__(self, config, evaluate=False):
         super().__init__(config, evaluate=evaluate)
+        self.examples = None
+        self.tensors = None
 
     def make_dataset(self, src_path, tgt_path, labels_path, no_cache=False, verbose=True):
         src, tgt, labels = self.read(src_path, tgt_path, labels_path)
-        examples = self.load_examples(src, tgt, labels)
-        tensors = self.make_tensors(examples, no_cache=no_cache, verbose=verbose)
-        return tensors
+        self.load_examples(src, tgt, labels)
+        self.make_tensors(no_cache=no_cache, verbose=verbose)
 
-    @staticmethod
-    def load_examples(src, tgt, labels):
-        examples = [
+    def load_examples(self, src, tgt, labels):
+        self.examples = [
             InputExampleWord(guid=i, text_a=text_b, label=label)
             for i, (text_a, text_b, label) in enumerate(
                 zip(src, tgt, labels)
             )
         ]
-        return examples
 
     def read(self, src_path, tgt_path, labels_path):
         labels = self._read_labels(labels_path)
@@ -265,12 +267,14 @@ class DatasetSentLevel(Dataset):
 
     def __init__(self, config, evaluate=False):
         super().__init__(config, evaluate=evaluate)
+        self.df = None
+        self.examples = None
+        self.tensors = None
 
     def make_dataset(self, data_path, features_path=None, no_cache=False, verbose=True):
-        data = self.read(data_path, features_path=features_path)
-        examples = self.load_examples(data)
-        tensors = self.make_tensors(examples, no_cache=no_cache, verbose=verbose)
-        return tensors
+        self.read(data_path, features_path=features_path)
+        self.load_examples()
+        self.make_tensors(no_cache=no_cache, verbose=verbose)
 
     def read(self, data_path, features_path=None):
         select_columns = ['original', 'translation', 'z_mean']
@@ -285,20 +289,20 @@ class DatasetSentLevel(Dataset):
             assert len(features) == len(data)
             for column in features.columns:
                 data[column] = features[column]
-        return data
+        self.df = data
 
-    def load_examples(self, df):
-        assert 'text_a' in df.columns and 'text_b' in df.columns
+    def load_examples(self):
+        assert 'text_a' in self.df.columns and 'text_b' in self.df.columns
         examples = [
             InputExampleSent(i, text_a, text_b, label)
             for i, (text_a, text_b, label) in enumerate(
-                zip(df["text_a"], df["text_b"], df["labels"])
+                zip(self.df["text_a"], self.df["text_b"], self.df["labels"])
             )
         ]
-        if "{}1".format(DEFAULT_FEATURE_NAME) in df.columns:
-            for col in df.columns:
+        if "{}1".format(DEFAULT_FEATURE_NAME) in self.df.columns:
+            for col in self.df.columns:
                 if col.startswith(DEFAULT_FEATURE_NAME):
-                    values = df[col].to_list()
+                    values = self.df[col].to_list()
                     for i, ex in enumerate(examples):
                         ex.features_inject[col] = values[i]
-        return examples
+        self.examples = examples

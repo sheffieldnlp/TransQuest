@@ -25,13 +25,13 @@ class TestDataSent(unittest.TestCase):
     def test_loads_examples(self):
         dataset = DatasetWordLevel(self.config)
         src, tgt, labels = dataset.read(d.src_txt, d.tgt_txt, d.tags_txt)
-        examples = dataset.load_examples(src, tgt, labels)
-        assert len(examples) == len(src)
+        dataset.load_examples(src, tgt, labels)
+        assert len(dataset.examples) == len(src)
 
     def test_makes_dataset(self):
         dataset = DatasetWordLevel(self.config)
-        train = dataset.make_dataset(d.src_txt, d.tgt_txt, d.tags_txt)
-        print(len(train))
+        dataset.make_dataset(d.src_txt, d.tgt_txt, d.tags_txt)
+        print(len(dataset.tensor_dataset.tensors))
 
     def test_maps_labels_to_bpe(self):
         tokens = '1934 besuchte José Ortega y Gasset Husserl in Freiburg .'.split()

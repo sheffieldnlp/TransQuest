@@ -32,16 +32,18 @@ def main():
     examples = []
     for lang_pair in args.lang_pairs:
         train_path, train_features_path = build_paths(args.train_path, lang_pair, args.train_features_path)
-        train_tsv = train_set.read(train_path, features_path=train_features_path)
-        examples.extend(train_set.load_examples(train_tsv))
-    train_data = train_set.make_tensors(examples)
+        train_set.read(train_path, features_path=train_features_path)
+        train_set.load_examples()
+        examples.extend(train_set.examples)
+    train_set.examples = examples
+    train_set.make_tensors()
+    train_set.df = None
 
     test_set = DatasetSentLevel(config, evaluate=True)
     test_path, test_features_path = build_paths(args.test_path, args.test_lang_pair, args.test_features_path)
-    test_data = test_set.make_dataset(test_path, features_path=test_features_path)
-    test_tsv = test_set.read(test_path, features_path=test_features_path)
+    test_set.make_dataset(test_path, features_path=test_features_path)
 
-    train_cycle(train_data, test_data, test_tsv, config, args.output_dir, args.test_size)
+    train_cycle(train_set.tensor_dataset, test_set.tensor_dataset, test_set.df, config, args.output_dir, args.test_size)
 
 
 if __name__ == '__main__':

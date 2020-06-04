@@ -23,17 +23,17 @@ def main():
     config = load_config(args)
     train_set = DatasetWordLevel(config, evaluate=False)
     test_set = DatasetWordLevel(config, evaluate=True)
-    train_data = train_set.make_dataset(
+    train_set.make_dataset(
         os.path.join(args.data_dir, 'train', 'train.src'),
         os.path.join(args.data_dir, 'train', 'train.mt'),
         os.path.join(args.data_dir, 'train', 'train.tags'),
     )
-    test_data = test_set.make_dataset(
+    test_set.make_dataset(
         os.path.join(args.data_dir, 'dev', 'dev.src'),
         os.path.join(args.data_dir, 'dev', 'dev.mt'),
         os.path.join(args.data_dir, 'dev', 'dev.tags'),
     )
-    train_cycle(train_data, test_data, config, args.test_size)
+    train_cycle(train_set.tensor_dataset, test_set.tensor_dataset, config, args.test_size)
 
 
 if __name__ == '__main__':

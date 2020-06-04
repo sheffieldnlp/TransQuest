@@ -20,5 +20,5 @@ class TestTrain(unittest.TestCase):
         config = load_config(w.args)
         config['model_type'] = 'xlmrobertatoken'
         dataset = DatasetWordLevel(self.config)
-        train = dataset.make_dataset(w.src_txt, w.tgt_txt, w.tags_txt)
-        train_model(train, config, test_size=0.5)
+        dataset.make_dataset(w.src_txt, w.tgt_txt, w.tags_txt)
+        train_model(dataset.tensor_dataset, config, test_size=0.5)
