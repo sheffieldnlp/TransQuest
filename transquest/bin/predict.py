@@ -27,7 +27,7 @@ def main():
         config['model_type'], args.model_dir, num_labels=1, use_cuda=torch.cuda.is_available(), args=config
     )
     test_set = DatasetSentLevel(config, evaluate=True)
-    test_set.make_dataset(args.test_file)
+    test_set.make_dataset(args.test_file, features_path=args.features_path)
     result, model_outputs = model.eval_model(
         test_set.tensor_dataset, pearson_corr=pearson_corr, spearman_corr=spearman_corr, mae=mean_absolute_error)
     test_set.df['predictions'] = model_outputs
