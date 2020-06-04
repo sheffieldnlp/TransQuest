@@ -15,8 +15,8 @@ class Args:
 
 class DataSent:
 
-    train_tsv = os.path.join(data_dir, 'toy', 'toy.tsv')
-    test_tsv = os.path.join(data_dir, 'toy', 'toy.tsv')
+    train_tsv = os.path.join(data_dir, 'toy', 'toy.sien.tsv')
+    test_tsv = os.path.join(data_dir, 'toy', 'toy.sien.tsv')
     config_path = os.path.join(data_dir, 'toy', 'toy.json')
     features_pref = os.path.join(data_dir, 'toy', 'features')
     out_dir = os.path.join(data_dir, 'toy', 'output')

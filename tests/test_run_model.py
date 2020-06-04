@@ -55,7 +55,8 @@ class TestTrain(unittest.TestCase):
         train_set = DatasetSentLevel(config, evaluate=False)
         train_set.make_dataset(d.train_tsv, features_path='{}.train.tsv'.format(d.features_pref))
 
-        test_set = DatasetSentLevel(config, evaluate=True)
-        test_set.make_dataset(d.test_tsv, features_path='{}.test.tsv'.format(d.features_pref))
+        test_sets = dict()
+        test_sets['sien'] = DatasetSentLevel(config, evaluate=True)
+        test_sets['sien'].make_dataset(d.test_tsv, features_path='{}.test.tsv'.format(d.features_pref))
 
-        train_cycle(train_set.tensor_dataset, test_set.tensor_dataset, test_set.df, config, d.out_dir, test_size=0.5)
+        train_cycle(train_set, test_sets, config, d.out_dir, test_size=0.5)
