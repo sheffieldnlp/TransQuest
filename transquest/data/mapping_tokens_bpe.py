@@ -7,7 +7,7 @@ def map_pieces(pieces_from, pieces_to, values, method, to_sep='▁', from_sep=No
         pieces_to = [p.replace(to_sep, '').strip() for p in pieces_to]
     if from_sep is not None:
         pieces_from = [p.replace(from_sep, '').strip() for p in pieces_from]
-    pieces_to = [p.replace(',', '，') for p in pieces_to]
+    pieces_to = [p.replace('，', ',') for p in pieces_to]
     try:
         assert ''.join(pieces_from).lower() == ''.join(pieces_to).lower()
     except AssertionError:
