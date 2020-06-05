@@ -2,7 +2,9 @@ from transformers.configuration_xlm_roberta import XLMRobertaConfig
 from transformers.modeling_xlm_roberta import XLM_ROBERTA_PRETRAINED_MODEL_ARCHIVE_MAP
 
 from transquest.algo.transformers.models.xlm_roberta_model import XLMRobertaForSequenceClassification
-from transquest.algo.classifiers import RobertaClassificationHeadInjection
+from transquest.algo.transformers.models.roberta_model import RobertaForTokenClassification
+from transquest.algo.classifiers import RobertaClassificationHeadSequenceInjection
+from transquest.algo.classifiers import RobertaClassificationHeadTokenInjection
 
 
 class XLMRobertaInjectConfig(XLMRobertaConfig):
@@ -19,4 +21,13 @@ class XLMRobertaForSequenceClassificationInject(XLMRobertaForSequenceClassificat
 
     def __init__(self, config):
         super(XLMRobertaForSequenceClassificationInject, self).__init__(config, weight=None)
-        self.classifier = RobertaClassificationHeadInjection(config)
+        self.classifier = RobertaClassificationHeadSequenceInjection(config)
+
+
+class XLMRobertaForTokenClassificationInject(RobertaForTokenClassification):
+    config_class = XLMRobertaInjectConfig
+    pretrained_model_archive_map = XLM_ROBERTA_PRETRAINED_MODEL_ARCHIVE_MAP
+
+    def __init__(self, config):
+        super(XLMRobertaForTokenClassificationInject, self).__init__(config)
+        self.classifier = RobertaClassificationHeadTokenInjection(config)

@@ -36,7 +36,7 @@ class TestDataSent(unittest.TestCase):
     def test_makes_dataset_with_features(self):
         dataset = DatasetWordLevel(self.config)
         train = dataset.make_dataset(d.src_txt, d.tgt_txt, d.tags_txt, [d.features_path], d.mt_path)
-        print(len(train))
+        assert train.tensors[4].shape == (5, 1, 128)
 
     def test_maps_labels_to_bpe(self):
         tokens = '1934 besuchte José Ortega y Gasset Husserl in Freiburg .'.split()

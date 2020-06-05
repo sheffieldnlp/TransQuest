@@ -84,12 +84,7 @@ class Dataset:
         all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
         all_features = None
         if features[0].features_inject:
-            num_features = len(features[0].features_inject)
-            features_arr = np.zeros((len(features), num_features))
-            for i, f in enumerate(features):
-                for j, feature_name in enumerate(f.features_inject.keys()):
-                    features_arr[i][j] = f.features_inject[feature_name]
-            all_features = torch.tensor(features_arr, dtype=torch.float)
+            all_features = self._injected_features_to_tensor(features=features, max_len=self.max_seq_length)
 
         label_torch_type = torch.long if self.output_mode == 'classification' else torch.float
         all_label_ids = torch.tensor([f.label_id for f in features], dtype=label_torch_type)
@@ -222,6 +217,9 @@ class Dataset:
     def _map_features(self, **kwargs):
         return
 
+    def _injected_features_to_tensor(self, **kwargs):
+        return
+
 
 class DatasetWordLevel(Dataset):
 
@@ -257,8 +255,9 @@ class DatasetWordLevel(Dataset):
         if mt_path is not None:
             mt_out = [l.strip().split() for l in open(mt_path)]
         features = dict()
-        for i, path in enumerate(features_path, start=1):
-            features['{}{}'.format(DEFAULT_FEATURE_NAME, i)] = [[float(s) for s in l.split()[:-1]] for l in open(path)]
+        if features_path is not None:
+            for i, path in enumerate(features_path, start=1):
+                features['{}{}'.format(DEFAULT_FEATURE_NAME, i)] = [[float(s) for s in l.split()[:-1]] for l in open(path)]
         return src, tgt, labels, features, mt_out
 
     @staticmethod
@@ -287,6 +286,15 @@ class DatasetWordLevel(Dataset):
             mapped_f = mapped_f + [0]
             mapped[feature] = self._pad(mapped_f + [0] if self.cls_token_at_end else [0] + mapped_f, padding)
         return mapped
+
+    def _injected_features_to_tensor(self, features, max_len, **kwargs):
+        num_features = len(features[0].features_inject)
+        features_arr = np.zeros((len(features), num_features, max_len))
+        for i, f in enumerate(features):
+            for j, feature_name in enumerate(f.features_inject.keys()):
+                features_arr[i][j] = f.features_inject[feature_name]
+        all_features = torch.tensor(features_arr, dtype=torch.float)
+        return all_features
 
 
 class DatasetSentLevel(Dataset):
@@ -336,3 +344,12 @@ class DatasetSentLevel(Dataset):
 
     def _map_features(self, example, **kwargs):
         return example.features_inject
+
+    def _injected_features_to_tensor(self, features, **kwargs):
+        num_features = len(features[0].features_inject)
+        features_arr = np.zeros((len(features), num_features))
+        for i, f in enumerate(features):
+            for j, feature_name in enumerate(f.features_inject.keys()):
+                features_arr[i][j] = f.features_inject[feature_name]
+        all_features = torch.tensor(features_arr, dtype=torch.float)
+        return all_features
