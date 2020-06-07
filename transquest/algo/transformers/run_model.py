@@ -577,7 +577,8 @@ class QuestModel:
         else:
             spearman = spearmanr(labels, preds)[0]
             accuracy = accuracy_score(labels, preds)
-            return {**{"mcc": mcc, "spearman": spearman, "accuracy": accuracy}, **extra_metrics}
+            matrix = confusion_matrix(labels, preds)
+            return {**{"mcc": mcc, "spearman": spearman, "accuracy": accuracy, "confusion_matrix": matrix}, **extra_metrics}
 
     def predict(self, dataset, multi_label=False):
         """
