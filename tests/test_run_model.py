@@ -7,7 +7,6 @@ from transquest.data.load_config import load_config
 from transquest.data.dataset import DatasetSentLevel
 
 from tests.utils import DataSent as d
-from tests.utils import DataWord as w
 
 
 test_dir = os.path.dirname(os.path.realpath(__file__))
@@ -16,7 +15,16 @@ data_dir = os.path.join(test_dir, '../data')
 
 class TestTrain(unittest.TestCase):
 
-    def test_trains_model_sent_level(self):
+    def test_trains_model_sent_level_classification(self):
+        config = load_config(d.args)
+        config['model_type'] = 'xlmroberta'
+        config['regression'] = 'false'
+        config['num_labels'] = 3
+        dataset = DatasetSentLevel(config, evaluate=False)
+        dataset = dataset.make_dataset(d.train_classif_tsv)
+        train_model(dataset, config, test_size=0.5)
+
+    def test_trains_model_sent_level_regression(self):
         config = load_config(d.args)
         config['model_type'] = 'xlmroberta'
         dataset = DatasetSentLevel(config, evaluate=False)
