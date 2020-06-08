@@ -526,7 +526,7 @@ class QuestModel:
 
         if not args['regression']:
             preds = np.argmax(preds, axis=-1)
-
+            model_outputs = preds
             if args['word_level']:
                 def _remove_padding(a, mask):
                     res = []
