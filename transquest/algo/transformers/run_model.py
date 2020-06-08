@@ -12,13 +12,16 @@ import warnings
 import numpy as np
 import pandas as pd
 import torch
+
 from scipy.stats import mode
+from scipy.stats import spearmanr
 
 
 from sklearn.metrics import (
     matthews_corrcoef,
     confusion_matrix,
     label_ranking_average_precision_score,
+    accuracy_score,
 )
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
@@ -572,7 +575,10 @@ class QuestModel:
             tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
             return {**{"mcc": mcc, "tp": tp, "tn": tn, "fp": fp, "fn": fn}, **extra_metrics}
         else:
-            return {**{"mcc": mcc}, **extra_metrics}
+            spearman = spearmanr(labels, preds)[0]
+            accuracy = accuracy_score(labels, preds)
+            matrix = confusion_matrix(labels, preds)
+            return {**{"mcc": mcc, "spearman": spearman, "accuracy": accuracy, "confusion_matrix": matrix}, **extra_metrics}
 
     def predict(self, dataset, multi_label=False):
         """
