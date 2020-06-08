@@ -33,7 +33,6 @@ def define_metrics(config):
     else:
         metrics = {
             'accuracy': accuracy_score,
-            'matrix': confusion_matrix
         }
     return metrics
 
