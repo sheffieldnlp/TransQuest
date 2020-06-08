@@ -18,7 +18,7 @@ class TestTrain(unittest.TestCase):
     def test_trains_model_sent_level_classification(self):
         config = load_config(d.args)
         config['model_type'] = 'xlmroberta'
-        config['regression'] = 'false'
+        config['regression'] = False
         config['num_labels'] = 3
         dataset = DatasetSentLevel(config, evaluate=False)
         dataset = dataset.make_dataset(d.train_classif_tsv)

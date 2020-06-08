@@ -33,6 +33,7 @@
     "tensorboard_dir": null,
 
     "regression": false,
+    "word_level": true,
 
     "overwrite_output_dir": true,
     "reprocess_input_data": true,
