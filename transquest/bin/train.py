@@ -89,19 +89,22 @@ def train_cycle(train, test, test_tsv, config, output_dir, test_size):
     runs = 1 if config['n_fold'] < 2 else config['n_fold']
     correlations = defaultdict(list)
 
-    test_tsv = un_fit(test_tsv, 'labels')
+    if config['regression']:
+        test_tsv = un_fit(test_tsv, 'labels')
 
     for r in range(runs):
-        test_tsv = un_fit(test_tsv, predictions_column(r))
+        if config['regression']:
+            test_tsv = un_fit(test_tsv, predictions_column(r))
         correlations['pearson'].append(pearsonr(test_tsv[predictions_column(r)], test_tsv['labels'])[0])
         correlations['spearman'].append(spearmanr(test_tsv[predictions_column(r)], test_tsv['labels'])[0])
+        correlations['accuracy'].append(accuracy_score(test_tsv['labels'], test_tsv[predictions_column(r)]))
         plot_path = os.path.join(output_dir, 'results_{}.png'.format(r))
         draw_scatterplot(test_tsv, 'labels', predictions_column(r), plot_path, config['model_type'] + ' ' + config['model_name'])
 
     preds_path = os.path.join(output_dir, 'results.tsv')
     test_tsv.to_csv(preds_path, header=True, sep='\t', index=False, encoding='utf-8')
 
-    for corr in ('pearson', 'spearman'):
+    for corr in ('pearson', 'spearman', 'accuracy'):
         print(corr)
         print(correlations[corr])
         print(np.mean(correlations[corr]))
