@@ -5,6 +5,8 @@ from transquest.data.mapping_tokens_bpe import map_pieces
 from transquest.data.load_config import load_config
 from transquest.data.dataset import DatasetWordLevel
 
+from transquest.algo.model_classes import XLMRobertaTokenizer
+
 from tests.utils import DataWord as d
 
 test_dir = os.path.dirname(os.path.realpath(__file__))
@@ -44,6 +46,14 @@ class TestDataSent(unittest.TestCase):
         pieces = ['▁1934', '▁besucht', 'e', '▁José', '▁Ort', 'ega', '▁y', '▁G', 'asset', '▁Hus', 'ser', 'l', '▁in', '▁Freiburg', '▁', '.']
         labels = map_pieces(tokens, pieces, labels, 'first')
         assert len(labels) == len(pieces)
+
+    def test_maps_labels_to_bpe_chinese(self):
+        tokens = "Harlequin   每秒 销售   4   本书 以上   ，   其中 一半 在 国际 上 销售 。".split()
+        tokenizer = XLMRobertaTokenizer.from_pretrained('xlm-roberta-base', do_lower_case=False)
+        pretrained_pieces = tokenizer.tokenize(' '.join(tokens))
+        labels = [1] * len(tokens)
+        result = map_pieces(tokens, pretrained_pieces, labels, 'first')
+        assert len(result) == len(pretrained_pieces)
 
     def test_maps_probas_to_bpe(self):
         mt_pieces = '1934 besuchte José Ort@@ ega y G@@ asset Hus@@ ser@@ l in Freiburg .'.split()
