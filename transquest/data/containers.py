@@ -33,9 +33,10 @@ class InputExampleSent(InputExample):  # TODO: use this for sentence-level
 
 
 class InputExampleWord(InputExample):
-    def __init__(self, guid, text_a, text_b=None, label=None):
+    def __init__(self, guid, text_a, text_b=None, label=None, mt_tokens=None):
         super(InputExampleWord, self).__init__(guid, text_a, text_b=text_b, label=label)
         assert type(self.label) is list
+        self.mt_tokens = mt_tokens
         self.text_b = None
 
 

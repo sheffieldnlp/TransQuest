@@ -17,7 +17,10 @@ def main():
     parser.add_argument('--data_dir', required=True)
     parser.add_argument('--output_dir', required=True)
     parser.add_argument('--config', required=True)
-    parser.add_argument('--features_pref', default=None, required=False)
+    parser.add_argument('--train_features_paths', nargs='+', default=None, required=False)
+    parser.add_argument('--test_features_paths', nargs='+', default=None, required=False)
+    parser.add_argument('--train_mt_path', default=None, required=False)
+    parser.add_argument('--test_mt_path', default=None, required=False)
     parser.add_argument('--test_size', default=0.1, type=float)
     args = parser.parse_args()
     config = load_config(args)
@@ -27,11 +30,15 @@ def main():
         os.path.join(args.data_dir, 'train', 'train.src'),
         os.path.join(args.data_dir, 'train', 'train.mt'),
         os.path.join(args.data_dir, 'train', 'train.tags'),
+        features_path=args.train_features_paths,
+        mt_path=args.train_mt_path,
     )
     test_set.make_dataset(
         os.path.join(args.data_dir, 'dev', 'dev.src'),
         os.path.join(args.data_dir, 'dev', 'dev.mt'),
         os.path.join(args.data_dir, 'dev', 'dev.tags'),
+        features_path=args.test_features_paths,
+        mt_path=args.test_mt_path,
     )
     train_cycle(train_set.tensor_dataset, test_set.tensor_dataset, config, args.test_size)
 

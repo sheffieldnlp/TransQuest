@@ -12,13 +12,16 @@ import warnings
 import numpy as np
 import pandas as pd
 import torch
+
 from scipy.stats import mode
+from scipy.stats import spearmanr
 
 
 from sklearn.metrics import (
     matthews_corrcoef,
     confusion_matrix,
     label_ranking_average_precision_score,
+    accuracy_score,
 )
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
@@ -522,14 +525,16 @@ class QuestModel:
         model_outputs = preds
 
         if not args['regression']:
-            def _remove_padding(a, mask):
-                res = []
-                for i, arr in enumerate(a):
-                    res.extend(arr[np.nonzero(mask[i])].squeeze())
-                return res
-            preds = np.argmax(preds, axis=2)
-            preds = _remove_padding(preds, masks)
-            out_label_ids = _remove_padding(out_label_ids, masks)
+            preds = np.argmax(preds, axis=-1)
+            model_outputs = preds
+            if args['word_level']:
+                def _remove_padding(a, mask):
+                    res = []
+                    for i, arr in enumerate(a):
+                        res.extend(arr[np.nonzero(mask[i])].squeeze())
+                    return res
+                preds = _remove_padding(preds, masks)
+                out_label_ids = _remove_padding(out_label_ids, masks)
 
         result = self.compute_metrics(preds, out_label_ids, **kwargs)
         result["eval_loss"] = eval_loss

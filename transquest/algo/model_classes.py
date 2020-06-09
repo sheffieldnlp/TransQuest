@@ -28,6 +28,7 @@ from transquest.algo.transformers.models.xlm_model import XLMForSequenceClassifi
 from transquest.algo.transformers.models.xlm_roberta_model import XLMRobertaForSequenceClassification
 from transquest.algo.transformers.models.xlm_roberta_model import XLMRobertaForTokenClassification
 from transquest.algo.transformers.models.xlm_roberta_model_inject import XLMRobertaForSequenceClassificationInject
+from transquest.algo.transformers.models.xlm_roberta_model_inject import XLMRobertaForTokenClassificationInject
 from transquest.algo.transformers.models.xlm_roberta_model_inject import XLMRobertaInjectConfig
 from transquest.algo.transformers.models.xlnet_model import XLNetForSequenceClassification
 
@@ -45,5 +46,6 @@ model_classes = {
     "xlmroberta": (XLMRobertaConfig, XLMRobertaForSequenceClassification, XLMRobertaTokenizer),
     "xlmrobertatoken": (XLMRobertaConfig, XLMRobertaForTokenClassification, XLMRobertaTokenizer),
     "xlmrobertainject": (XLMRobertaInjectConfig, XLMRobertaForSequenceClassificationInject, XLMRobertaTokenizer),
+    "xlmrobertatokeninject": (XLMRobertaInjectConfig, XLMRobertaForTokenClassificationInject, XLMRobertaTokenizer),
     "flaubert": (FlaubertConfig, FlaubertForSequenceClassification, FlaubertTokenizer),
 }

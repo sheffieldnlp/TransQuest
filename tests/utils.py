@@ -15,6 +15,8 @@ class Args:
 
 class DataSent:
 
+    train_classif_tsv = os.path.join(data_dir, 'toy', 'toy.classif.tsv')
+    test_classif_tsv = os.path.join(data_dir, 'toy', 'toy.classif.tsv')
     train_tsv = os.path.join(data_dir, 'toy', 'toy.sien.tsv')
     test_tsv = os.path.join(data_dir, 'toy', 'toy.sien.tsv')
     config_path = os.path.join(data_dir, 'toy', 'toy.json')
@@ -29,5 +31,7 @@ class DataWord:
     src_txt = os.path.join(data_dir, 'toy-word-level', 'toy.src')
     tgt_txt = os.path.join(data_dir, 'toy-word-level', 'toy.mt')
     config_path = os.path.join(data_dir, 'toy-word-level', 'toy.json')
+    features_path = os.path.join(data_dir, 'toy-word-level', 'toy.word_probas')
+    mt_path = os.path.join(data_dir, 'toy-word-level', 'toy.mt_out')
     out_dir = os.path.join(data_dir, 'toy-word-level', 'output')
     args = Args(config_path, out_dir)

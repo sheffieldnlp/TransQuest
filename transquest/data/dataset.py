@@ -3,6 +3,8 @@ import numpy as np
 import torch
 import pandas as pd
 
+from collections import OrderedDict
+
 from multiprocessing import cpu_count
 from multiprocessing import Pool
 from tqdm.auto import tqdm
@@ -12,7 +14,7 @@ from transquest.data.normalizer import fit
 from transquest.data.containers import InputExampleSent
 from transquest.data.containers import InputExampleWord
 from transquest.data.containers import InputFeatures
-from transquest.data.mapping_tokens_bpe import map_tokens_bpe
+from transquest.data.mapping_tokens_bpe import map_pieces
 
 from transquest.algo.model_classes import model_classes
 
@@ -86,12 +88,7 @@ class Dataset:
         all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
         all_features = None
         if features[0].features_inject:
-            num_features = len(features[0].features_inject)
-            features_arr = np.zeros((len(features), num_features))
-            for i, f in enumerate(features):
-                for j, feature_name in enumerate(f.features_inject.keys()):
-                    features_arr[i][j] = f.features_inject[feature_name]
-            all_features = torch.tensor(features_arr, dtype=torch.float)
+            all_features = self._injected_features_to_tensor(features=features, max_len=self.max_seq_length)
 
         label_torch_type = torch.long if self.output_mode == 'classification' else torch.float
         all_label_ids = torch.tensor([f.label_id for f in features], dtype=label_torch_type)
@@ -177,10 +174,10 @@ class Dataset:
         input_ids = self._pad(input_ids, [pad_token] * padding_length)
         input_mask = self._pad(input_mask, [0 if self.mask_padding_with_zero else 1] * padding_length)
         segment_ids = self._pad(segment_ids, [self.pad_token_segment_id] * padding_length)
-        if type(example) is InputExampleWord:
-            label = self._pad(self._get_labels(example, tokens_a), ([pad_token] * padding_length))
-        else:
-            label = example.label
+
+        label = self._map_labels(example=example, bpe_tokens=tokens_a, padding=([pad_token] * padding_length))
+        features_inject = self._map_features(
+            example=example, bpe_tokens=tokens_a, padding=([pad_token] * padding_length))
 
         assert len(input_ids) == self.max_seq_length
         assert len(input_mask) == self.max_seq_length
@@ -191,7 +188,7 @@ class Dataset:
             input_mask=input_mask,
             segment_ids=segment_ids,
             label_id=label,
-            features_inject=example.features_inject,
+            features_inject=features_inject,
         )
 
     def _pad(self, seq, padding):
@@ -217,12 +214,14 @@ class Dataset:
             else:
                 tokens_b.pop()
 
-    def _get_labels(self, example, pieces):
-        tokens = example.text_a.split()
-        labels = example.label
-        labels = map_tokens_bpe(tokens, pieces, labels)
-        labels = labels + [0]  # sep token
-        return labels + [0] if self.cls_token_at_end else [0] + labels
+    def _map_labels(self, **kwargs):
+        return
+
+    def _map_features(self, **kwargs):
+        return
+
+    def _injected_features_to_tensor(self, **kwargs):
+        return
 
 
 class DatasetWordLevel(Dataset):
@@ -232,24 +231,36 @@ class DatasetWordLevel(Dataset):
         self.examples = None
         self.tensors = None
 
-    def make_dataset(self, src_path, tgt_path, labels_path, no_cache=False, verbose=True):
-        src, tgt, labels = self.read(src_path, tgt_path, labels_path)
-        self.load_examples(src, tgt, labels)
+    def make_dataset(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None, no_cache=False, verbose=True):
+        src, tgt, labels, features, mt_out = self.read(src_path, tgt_path, labels_path, features_path=features_path, mt_path=mt_path)
+        self.load_examples(src, tgt, labels, features, mt_out)
         self.make_tensors(no_cache=no_cache, verbose=verbose)
 
-    def load_examples(self, src, tgt, labels):
+    def load_examples(self, src, tgt, labels, features=None, mt_out=None):
         self.examples = [
             InputExampleWord(guid=i, text_a=text_b, label=label)
             for i, (text_a, text_b, label) in enumerate(
                 zip(src, tgt, labels)
             )
         ]
+        if features is not None:
+            for feature_name in features:
+                for i, ex in enumerate(self.examples):
+                    ex.features_inject[feature_name] = features[feature_name][i]
+                    ex.mt_tokens = mt_out[i]
 
-    def read(self, src_path, tgt_path, labels_path):
+    def read(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None):
         labels = self._read_labels(labels_path)
         src = [l.strip() for l in open(src_path)]
         tgt = [l.strip() for l in open(tgt_path)]
-        return src, tgt, labels
+        mt_out = None
+        if mt_path is not None:
+            mt_out = [l.strip().split() for l in open(mt_path)]
+        features = dict()
+        if features_path is not None:
+            for i, path in enumerate(features_path, start=1):
+                features['{}{}'.format(DEFAULT_FEATURE_NAME, i)] = [[float(s) for s in l.split()[:-1]] for l in open(path)]
+        return src, tgt, labels, features, mt_out
 
     @staticmethod
     def _read_labels(path):
@@ -261,6 +272,31 @@ class DatasetWordLevel(Dataset):
             assert len(labels_i) * 2 + 1 == len(tags)
             labels.append(labels_i)
         return labels
+
+    def _map_labels(self, example, bpe_tokens, padding):
+        labelled_tokens = example.text_a.split()
+        labels = example.label
+        labels = map_pieces(labelled_tokens, bpe_tokens, labels, method='first')
+        labels = labels + [0]  # sep token
+        return self._pad(labels + [0] if self.cls_token_at_end else [0] + labels, padding)
+
+    def _map_features(self, example, bpe_tokens, padding):
+        mapped = OrderedDict()
+        for feature in example.features_inject:
+            mapped_f = map_pieces(
+                example.mt_tokens, bpe_tokens, example.features_inject[feature], method='average', from_sep='@@')
+            mapped_f = mapped_f + [0]
+            mapped[feature] = self._pad(mapped_f + [0] if self.cls_token_at_end else [0] + mapped_f, padding)
+        return mapped
+
+    def _injected_features_to_tensor(self, features, max_len, **kwargs):
+        num_features = len(features[0].features_inject)
+        features_arr = np.zeros((len(features), num_features, max_len))
+        for i, f in enumerate(features):
+            for j, feature_name in enumerate(f.features_inject.keys()):
+                features_arr[i][j] = f.features_inject[feature_name]
+        all_features = torch.tensor(features_arr, dtype=torch.float)
+        return all_features
 
 
 class DatasetSentLevel(Dataset):
@@ -281,7 +317,8 @@ class DatasetSentLevel(Dataset):
         data = pd.read_csv(data_path, sep='\t', quoting=3)
         data = data[select_columns]
         data = data.rename(columns={'original': 'text_a', 'translation': 'text_b', 'z_mean': 'labels'})
-        data = fit(data, 'labels')
+        if self.output_mode == 'regression':
+            data = fit(data, 'labels')
         if features_path is not None:
             features = pd.read_csv(features_path, sep='\t', header=None)
             num_features = len(features.columns)
@@ -306,3 +343,18 @@ class DatasetSentLevel(Dataset):
                     for i, ex in enumerate(examples):
                         ex.features_inject[col] = values[i]
         self.examples = examples
+
+    def _map_labels(self, example, **kwargs):
+        return example.label
+
+    def _map_features(self, example, **kwargs):
+        return example.features_inject
+
+    def _injected_features_to_tensor(self, features, **kwargs):
+        num_features = len(features[0].features_inject)
+        features_arr = np.zeros((len(features), num_features))
+        for i, f in enumerate(features):
+            for j, feature_name in enumerate(f.features_inject.keys()):
+                features_arr[i][j] = f.features_inject[feature_name]
+        all_features = torch.tensor(features_arr, dtype=torch.float)
+        return all_features

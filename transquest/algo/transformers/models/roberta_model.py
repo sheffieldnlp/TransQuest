@@ -4,6 +4,7 @@ from torch import nn
 from torch.nn import CrossEntropyLoss, MSELoss
 from transformers.modeling_roberta import RobertaConfig, RobertaModel, RobertaClassificationHead, \
     ROBERTA_PRETRAINED_MODEL_ARCHIVE_MAP, BertPreTrainedModel
+from transquest.algo.classifiers import RobertaClassificationHeadToken
 
 
 class RobertaForTokenClassification(BertPreTrainedModel):
@@ -17,7 +18,7 @@ class RobertaForTokenClassification(BertPreTrainedModel):
 
         self.roberta = RobertaModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.classifier = nn.Linear(config.hidden_size, config.num_labels)
+        self.classifier = RobertaClassificationHeadToken(config)
 
         self.init_weights()
 
@@ -30,6 +31,7 @@ class RobertaForTokenClassification(BertPreTrainedModel):
         head_mask=None,
         inputs_embeds=None,
         labels=None,
+        features_inject=None
     ):
         r"""
         labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`, `optional`, defaults to :obj:`None`):
@@ -80,7 +82,7 @@ class RobertaForTokenClassification(BertPreTrainedModel):
         sequence_output = outputs[0]
 
         sequence_output = self.dropout(sequence_output)
-        logits = self.classifier(sequence_output)
+        logits = self.classifier(sequence_output, features_inject=features_inject)
 
         outputs = (logits,) + outputs[2:]  # add hidden states and attention if they are here
 
