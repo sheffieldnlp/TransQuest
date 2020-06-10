@@ -67,7 +67,7 @@ class QuestModel:
                 torch.cuda.manual_seed_all(args['running_seed'])
 
         config_class, model_class, tokenizer_class = model_classes[model_type]
-        self.config = config_class.from_pretrained(model_name, **args, **kwargs)
+        self.config = config_class.from_pretrained(model_name, num_labels=num_labels, **args, **kwargs)
         self.num_labels = self.config.num_labels
         self.weight = weight
 

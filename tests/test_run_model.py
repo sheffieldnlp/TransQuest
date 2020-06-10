@@ -21,8 +21,8 @@ class TestTrain(unittest.TestCase):
         config['regression'] = False
         config['num_labels'] = 3
         dataset = DatasetSentLevel(config, evaluate=False)
-        dataset = dataset.make_dataset(d.train_classif_tsv)
-        train_model(dataset, config, test_size=0.5)
+        dataset.make_dataset(d.train_classif_tsv)
+        train_model(dataset.tensor_dataset, config, test_size=0.5)
 
     def test_trains_model_sent_level_regression(self):
         config = load_config(d.args)

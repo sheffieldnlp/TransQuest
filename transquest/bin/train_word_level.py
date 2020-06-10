@@ -8,7 +8,7 @@ from transquest.bin.util import train_model, evaluate_model
 
 def train_cycle(train, test, config, test_size):
     train_model(train, config, test_size=test_size)
-    model_outputs = evaluate_model(test, config)
+    model_outputs = evaluate_model(test, config, run=0)
     return model_outputs
 
 
