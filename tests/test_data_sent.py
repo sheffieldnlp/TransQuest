@@ -4,7 +4,6 @@ import unittest
 
 from transquest.data.load_config import load_config
 from transquest.data.dataset import DatasetSentLevel
-from transquest.algo.transformers.run_model import QuestModel
 
 from tests.utils import DataSent as d
 

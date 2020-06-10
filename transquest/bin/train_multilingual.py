@@ -34,7 +34,7 @@ def main(args):
     train_set.make_tensors()
     train_set.df = None
 
-    train_cycle(train_set, test_sets, config, args.output_dir, args.test_size)
+    train_cycle(train_set, test_sets, config)
 
 
 def cli_main():
@@ -46,7 +46,6 @@ def cli_main():
     parser.add_argument('--lang_pairs', nargs='+', required=False, default=None)
     parser.add_argument('--output_dir', required=True)
     parser.add_argument('--config', required=True)
-    parser.add_argument('--test_size', default=0.1, type=float)
     args = parser.parse_args()
     main(args)
 

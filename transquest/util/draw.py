@@ -1,7 +1,7 @@
 import seaborn as sns
 import pandas as pd
 
-from transquest.algo.transformers.evaluation import pearson_corr, spearman_corr, rmse
+from transquest.algo.metrics import pearson_corr, spearman_corr, rmse
 
 sns.set()
 

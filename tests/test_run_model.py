@@ -59,6 +59,7 @@ class TestTrain(unittest.TestCase):
         config = load_config(d.args)
         config['model_type'] = 'xlmrobertainject'
         config['n_fold'] = 2
+        config['test_size'] = 0.5
 
         train_set = DatasetSentLevel(config, evaluate=False)
         train_set.make_dataset(d.train_tsv, features_path='{}.train.tsv'.format(d.features_pref))
@@ -67,4 +68,4 @@ class TestTrain(unittest.TestCase):
         test_sets['sien'] = DatasetSentLevel(config, evaluate=True)
         test_sets['sien'].make_dataset(d.test_tsv, features_path='{}.test.tsv'.format(d.features_pref))
 
-        train_cycle(train_set, test_sets, config, d.out_dir, test_size=0.5)
+        train_cycle(train_set, test_sets, config)

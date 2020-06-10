@@ -13,23 +13,14 @@ import numpy as np
 import pandas as pd
 import torch
 
-from scipy.stats import mode
-from scipy.stats import spearmanr
-
-
-from sklearn.metrics import (
-    matthews_corrcoef,
-    confusion_matrix,
-    label_ranking_average_precision_score,
-    accuracy_score,
-)
 from tensorboardX import SummaryWriter
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
+from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm.auto import trange, tqdm
 
 from transformers import AdamW, get_linear_schedule_with_warmup
 
 from transquest.algo.model_classes import model_classes
+from transquest.algo.metrics import define_evaluation_metrics
 
 
 try:
@@ -40,10 +31,7 @@ except ImportError:
 
 
 class QuestModel:
-    def __init__(
-        self, model_type, model_name, num_labels=None, weight=None, args=None, use_cuda=True, cuda_device=-1, **kwargs,
-    ):
-
+    def __init__(self, model_type, model_name, weight=None, args=None, use_cuda=True, cuda_device=-1, **kwargs):
         """
         Initializes a ClassificationModel model.
 
@@ -56,7 +44,8 @@ class QuestModel:
             use_cuda (optional): Use GPU if available. Setting to False will force model to use CPU only.
             cuda_device (optional): Specific GPU that should be used. Will use the first available GPU by default.
             **kwargs (optional): For providing proxies, force_download, resume_download, cache_dir and other options specific to the 'from_pretrained' implementation where this will be supplied.
-        """  # noqa: ignore flake8"
+        """
+        # noqa: ignore flake8"
 
         if args and 'running_seed' in args:
             print('Seed is {}'.format(args['running_seed']))
@@ -67,9 +56,10 @@ class QuestModel:
                 torch.cuda.manual_seed_all(args['running_seed'])
 
         config_class, model_class, tokenizer_class = model_classes[model_type]
-        self.config = config_class.from_pretrained(model_name, num_labels=num_labels, **args, **kwargs)
+        self.config = config_class.from_pretrained(model_name, **args, **kwargs)
         self.num_labels = self.config.num_labels
         self.weight = weight
+        self.metrics = define_evaluation_metrics(args)
 
         if use_cuda:
             if torch.cuda.is_available():
@@ -260,7 +250,7 @@ class QuestModel:
         early_stopping_counter = 0
 
         if args["evaluate_during_training"]:
-            training_progress_scores = self._create_training_progress_scores(multi_label, **kwargs)
+            training_progress_scores = self._create_training_progress_scores(multi_label)
 
         if args["wandb_project"]:
             wandb.init(project=args["wandb_project"], config={**args}, **args["wandb_kwargs"])
@@ -536,48 +526,29 @@ class QuestModel:
                 preds = _remove_padding(preds, masks)
                 out_label_ids = _remove_padding(out_label_ids, masks)
 
-        result = self.compute_metrics(preds, out_label_ids, **kwargs)
+        result = self.compute_metrics(preds, out_label_ids)
         result["eval_loss"] = eval_loss
         results.update(result)
-
-        output_eval_file = os.path.join(eval_output_dir, "eval_results.txt")
-        with open(output_eval_file, "w") as writer:
-            for key in sorted(result.keys()):
-                writer.write("{} = {}\n".format(key, str(result[key])))
-
         return results, model_outputs
 
-    def compute_metrics(self, preds, labels, multi_label=False, **kwargs):
+    def compute_metrics(self, preds, labels):
         """
         Computes the evaluation metrics for the model predictions.
 
         Args:
             preds: Model predictions
             labels: Ground truth labels
-            **kwargs: Additional metrics that should be used. Pass in the metrics as keyword arguments (name of metric: function to use). E.g. f1=sklearn.metrics.f1_score.
-                        A metric function should take in two parameters. The first parameter will be the true labels, and the second parameter will be the predictions.
-
         Returns:
             result: Dictionary containing evaluation results. (Matthews correlation coefficient, tp, tn, fp, fn)
-            wrong: List of InputExample objects corresponding to each incorrect prediction by the model
-        """  # noqa: ignore flake8"
+        """
+        # noqa: ignore flake8"
 
         assert len(preds) == len(labels)
 
-        extra_metrics = {}
-        for metric, func in kwargs.items():
-            extra_metrics[metric] = func(labels, preds)
-
-        if self.args['regression']:
-            return {**extra_metrics}
-
-        mcc = matthews_corrcoef(labels, preds)
-
-        if self.model.num_labels == 2:
-            tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
-            return {**{"mcc": mcc, "tp": tp, "tn": tn, "fp": fp, "fn": fn}, **extra_metrics}
-        else:
-            return {**{"mcc": mcc}, **extra_metrics}
+        results = {}
+        for metric, func in self.metrics.items():
+            results[metric] = func(labels, preds)
+        return results
 
     def predict(self, dataset, multi_label=False):
         """
@@ -672,45 +643,16 @@ class QuestModel:
     def _get_last_metrics(self, metric_values):
         return {metric: values[-1] for metric, values in metric_values.items()}
 
-    def _create_training_progress_scores(self, multi_label, **kwargs):
-        extra_metrics = {key: [] for key in kwargs}
+    def _create_training_progress_scores(self, multi_label):
+        extra_metrics = {key: [] for key in self.metrics}
+        training_progress_scores = {
+            "global_step": [],
+            "train_loss": [],
+            "eval_loss": [],
+            **extra_metrics,
+        }
         if multi_label:
-            training_progress_scores = {
-                "global_step": [],
-                "LRAP": [],
-                "train_loss": [],
-                "eval_loss": [],
-                **extra_metrics,
-            }
-        else:
-            if self.model.num_labels == 2:
-                training_progress_scores = {
-                    "global_step": [],
-                    "tp": [],
-                    "tn": [],
-                    "fp": [],
-                    "fn": [],
-                    "mcc": [],
-                    "train_loss": [],
-                    "eval_loss": [],
-                    **extra_metrics,
-                }
-            elif self.model.num_labels == 1:
-                training_progress_scores = {
-                    "global_step": [],
-                    "train_loss": [],
-                    "eval_loss": [],
-                    **extra_metrics,
-                }
-            else:
-                training_progress_scores = {
-                    "global_step": [],
-                    "mcc": [],
-                    "train_loss": [],
-                    "eval_loss": [],
-                    **extra_metrics,
-                }
-
+            training_progress_scores.update({"LRAP": []})
         return training_progress_scores
 
     def _save_model(self, output_dir, model=None, results=None):
@@ -721,9 +663,3 @@ class QuestModel:
             model_to_save = model.module if hasattr(model, "module") else model
             model_to_save.save_pretrained(output_dir)
             self.tokenizer.save_pretrained(output_dir)
-
-        if results:
-            output_eval_file = os.path.join(output_dir, "eval_results.txt")
-            with open(output_eval_file, "w") as writer:
-                for key in sorted(results.keys()):
-                    writer.write("{} = {}\n".format(key, str(results[key])))

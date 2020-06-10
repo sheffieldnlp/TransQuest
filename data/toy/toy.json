@@ -19,6 +19,7 @@
     "max_grad_norm": 1.0,
     "do_lower_case": false,
     "num_labels": 1,
+    "test_size": 0.1,
 
     "logging_steps": 300,
     "save_steps": 300,

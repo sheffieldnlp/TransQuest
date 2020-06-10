@@ -3,7 +3,6 @@ import argparse
 import torch
 
 from transquest.algo.transformers.run_model import QuestModel
-from transquest.algo.transformers.evaluation import pearson_corr, spearman_corr
 from sklearn.metrics import mean_absolute_error
 
 from transquest.data.normalizer import un_fit
@@ -28,8 +27,7 @@ def main():
     )
     test_set = DatasetSentLevel(config, evaluate=True)
     test_set.make_dataset(args.test_file, features_path=args.features_path)
-    result, model_outputs = model.eval_model(
-        test_set.tensor_dataset, pearson_corr=pearson_corr, spearman_corr=spearman_corr, mae=mean_absolute_error)
+    result, model_outputs = model.eval_model(test_set.tensor_dataset)
     test_set.df['predictions'] = model_outputs
     test_set.df = un_fit(test_set.df, 'labels')
     test_set.df = un_fit(test_set.df, 'predictions')

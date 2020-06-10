@@ -31,6 +31,7 @@
     "use_cached_eval_features": false,
     "save_eval_checkpoints": true,
     "tensorboard_dir": null,
+    "test_size": 0.1,
 
     "regression": true,
     "word_level": false,
