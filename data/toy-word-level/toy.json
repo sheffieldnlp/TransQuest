@@ -2,7 +2,7 @@
     "SEED": 777,
     "GOOGLE_DRIVE": false,
     "DRIVE_FILE_ID": null,
-    "model_type": "xlmrobertainject",
+    "model_type": "xlmrobertatoken",
     "model_name": "xlm-roberta-base",
     "fp16": false,
     "fp16_opt_level": "O1",

@@ -5,7 +5,8 @@ from argparse import Namespace
 
 from tests.utils import data_dir
 
-from transquest.bin.train_multilingual import main
+from transquest.bin.train_multilingual import main as main_multilingual
+from transquest.bin.train_word_level import main as main_word_level
 
 
 class TestTrainMulti(unittest.TestCase):
@@ -22,7 +23,25 @@ class TestTrainMulti(unittest.TestCase):
     )
 
     def test_trains_model_with_multiple_lang_pairs(self):
-        main(self.args)
+        main_multilingual(self.args)
+
+
+class TestTrainWord(unittest.TestCase):
+
+    args = Namespace(
+        data_dir=os.path.join(data_dir, 'toy-word-level'),
+        lang_pair='sien',
+        output_dir=os.path.join(data_dir, 'toy-word-level', 'output'),
+        config=os.path.join(data_dir, 'toy-word-level', 'toy.json'),
+        train_features_paths=None,
+        test_features_paths=None,
+        train_mt_path=None,
+        test_mt_path=None,
+        test_size=0.5,
+    )
+
+    def test_trains_model_for_word_level(self):
+        main_word_level(self.args)
 
 
 if __name__ == '__main__':

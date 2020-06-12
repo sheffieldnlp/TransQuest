@@ -114,7 +114,6 @@ class Dataset:
         return features
 
     def _convert_example_to_feature(self, example, pad_token=0, sequence_a_segment_id=0, sequence_b_segment_id=1,):
-
         tokens_a = self.tokenizer.tokenize(example.text_a)
         tokens_b = None
         if example.text_b:

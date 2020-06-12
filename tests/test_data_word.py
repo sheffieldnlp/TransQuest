@@ -4,6 +4,7 @@ import unittest
 from transquest.data.mapping_tokens_bpe import map_pieces
 from transquest.data.load_config import load_config
 from transquest.data.dataset import DatasetWordLevel
+from transquest.algo.model_classes import model_classes
 
 from transquest.algo.model_classes import XLMRobertaTokenizer
 
@@ -48,11 +49,23 @@ class TestDataSent(unittest.TestCase):
         assert len(labels) == len(pieces)
 
     def test_maps_labels_to_bpe_chinese(self):
-        tokens = "Harlequin   每秒 销售   4   本书 以上   ，   其中 一半 在 国际 上 销售 。".split()
+        tokens = "2018 年 7 月 ， 法拉奇为 2018 年宾夕法尼亚州美国参议院选举的共和党候选人卢 · 巴莱塔 （ Lou Barletta ） 担任了筹款人。"
         tokenizer = XLMRobertaTokenizer.from_pretrained('xlm-roberta-base', do_lower_case=False)
-        pretrained_pieces = tokenizer.tokenize(' '.join(tokens))
+        pretrained_pieces = tokenizer.tokenize(tokens)
+        tokens = tokens.split()
         labels = [1] * len(tokens)
         result = map_pieces(tokens, pretrained_pieces, labels, 'first')
+        assert len(result) == len(pretrained_pieces)
+
+    def test_maps_probas_to_bpe_chinese(self):
+        mt = "印度教 和 佛教 的 许多 最 广泛 的 咒语 源自 于 神灵 的 召唤 ， 例如 ： @ @"
+        raw_mt_tokens = "印度@@ 教@@ 和@@ 佛@@ 教@@ 的@@ 许多@@ 最@@ 广泛@@ 的@@ 咒@@ 语@@ 源@@ 自@@ 于@@ 神@@ 灵@@ 的@@ 召@@ 唤@@ ，@@ 例如@@ ：@@"
+        _, _, tokenizer_class = model_classes['xlmroberta']
+        tokenizer = tokenizer_class.from_pretrained('xlm-roberta-base', do_lower_case=False)
+        pretrained_pieces = tokenizer.tokenize(mt)
+        raw_mt_tokens = raw_mt_tokens.split()
+        probas = [0.1] * len(raw_mt_tokens)
+        result = map_pieces(raw_mt_tokens, pretrained_pieces, probas, 'average')
         assert len(result) == len(pretrained_pieces)
 
     def test_maps_probas_to_bpe(self):

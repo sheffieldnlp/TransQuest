@@ -1,28 +1,20 @@
 import argparse
 import os
+import torch
 
 from transquest.data.load_config import load_config
 from transquest.data.dataset import DatasetWordLevel
 from transquest.bin.util import train_model, evaluate_model
+from transquest.algo.transformers.run_model import QuestModel
 
 
 def train_cycle(train, test, config, test_size):
     train_model(train, config, test_size=test_size)
-    model_outputs = evaluate_model(test, config, run=0)
-    return model_outputs
+    model = QuestModel(config['model_type'], config['best_model_dir'], use_cuda=torch.cuda.is_available(), args=config)
+    model.eval_model(test)
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', required=True)
-    parser.add_argument('--output_dir', required=True)
-    parser.add_argument('--config', required=True)
-    parser.add_argument('--train_features_paths', nargs='+', default=None, required=False)
-    parser.add_argument('--test_features_paths', nargs='+', default=None, required=False)
-    parser.add_argument('--train_mt_path', default=None, required=False)
-    parser.add_argument('--test_mt_path', default=None, required=False)
-    parser.add_argument('--test_size', default=0.1, type=float)
-    args = parser.parse_args()
+def main(args):
     config = load_config(args)
     train_set = DatasetWordLevel(config, evaluate=False)
     test_set = DatasetWordLevel(config, evaluate=True)
@@ -43,5 +35,19 @@ def main():
     train_cycle(train_set.tensor_dataset, test_set.tensor_dataset, config, args.test_size)
 
 
+def cli_main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data_dir', required=True)
+    parser.add_argument('--output_dir', required=True)
+    parser.add_argument('--config', required=True)
+    parser.add_argument('--train_features_paths', nargs='+', default=None, required=False)
+    parser.add_argument('--test_features_paths', nargs='+', default=None, required=False)
+    parser.add_argument('--train_mt_path', default=None, required=False)
+    parser.add_argument('--test_mt_path', default=None, required=False)
+    parser.add_argument('--test_size', default=0.1, type=float)
+    args = parser.parse_args()
+    main(args)
+
+
 if __name__ == '__main__':
-    main()
+    cli_main()

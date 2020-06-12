@@ -330,8 +330,6 @@ class QuestModel:
                         results, _ = self.eval_model(
                             eval_df, verbose=verbose and args["evaluate_during_training_verbose"], silent=True, **kwargs
                         )
-                        for key, value in results.items():
-                            tb_writer.add_scalar("eval_{}".format(key), value, global_step)
 
                         output_dir_current = os.path.join(output_dir, "checkpoint-{}".format(global_step))
 
