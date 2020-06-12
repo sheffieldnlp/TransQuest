@@ -15,6 +15,7 @@ def train_cycle(train, test, config, test_size):
 
 
 def main(args):
+    print(args)
     config = load_config(args)
     train_set = DatasetWordLevel(config, evaluate=False)
     test_set = DatasetWordLevel(config, evaluate=True)

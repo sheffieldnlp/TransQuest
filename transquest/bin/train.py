@@ -15,6 +15,7 @@ def main():
     parser.add_argument('--output_dir', required=True)
     parser.add_argument('--config', required=True)
     args = parser.parse_args()
+    print(args)
     config = load_config(args)
     train_set = DatasetSentLevel(config, evaluate=False)
     train_set.make_dataset(args.train_path, features_path=args.train_features_path)

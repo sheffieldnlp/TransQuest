@@ -30,7 +30,6 @@ class TestTrainWord(unittest.TestCase):
 
     args = Namespace(
         data_dir=os.path.join(data_dir, 'toy-word-level'),
-        lang_pair='sien',
         output_dir=os.path.join(data_dir, 'toy-word-level', 'output'),
         config=os.path.join(data_dir, 'toy-word-level', 'toy.json'),
         train_features_paths=None,
@@ -41,6 +40,20 @@ class TestTrainWord(unittest.TestCase):
     )
 
     def test_trains_model_for_word_level(self):
+        main_word_level(self.args)
+
+    def test_trains_model_for_word_level_with_features(self):
+        self.args.config = os.path.join(data_dir, 'toy-word-level', 'toy.wfeatures.json')
+        self.args.train_features_paths = [
+            os.path.join(data_dir, 'toy-word-level', 'toy.feature1'),
+            os.path.join(data_dir, 'toy-word-level', 'toy.feature2')
+        ]
+        self.args.test_features_paths = [
+            os.path.join(data_dir, 'toy-word-level', 'toy.feature1'),
+            os.path.join(data_dir, 'toy-word-level', 'toy.feature2')
+        ]
+        self.args.train_mt_path = os.path.join(data_dir, 'toy-word-level', 'toy.mt_out')
+        self.args.test_mt_path = os.path.join(data_dir, 'toy-word-level', 'toy.mt_out')
         main_word_level(self.args)
 
 

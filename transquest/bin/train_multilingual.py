@@ -16,6 +16,7 @@ def build_paths(formattable_main, lang_pair, formattable_features=None):
 
 
 def main(args):
+    print(args)
     config = load_config(args)
     train_set = DatasetSentLevel(config, evaluate=False)
     test_sets = dict()
