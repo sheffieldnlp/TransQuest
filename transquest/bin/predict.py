@@ -18,13 +18,13 @@ def main():
     parser.add_argument('-m', '--model_dir')
     parser.add_argument('-o', '--output_dir')
     parser.add_argument('-c', '--config')
+    parser.add_argument('--cpu', store_action=None, required=False, default=False)
     parser.add_argument('--features_path', default=None, required=False)
     args = parser.parse_args()
 
     config = load_config(args)
-    model = QuestModel(
-        config['model_type'], args.model_dir, use_cuda=torch.cuda.is_available(), args=config
-    )
+    use_cuda = False if args.cpu else torch.cuda.is_available()
+    model = QuestModel(config['model_type'], args.model_dir, use_cuda=use_cuda, args=config)
     test_set = DatasetSentLevel(config, evaluate=True)
     test_set.make_dataset(args.test_file, features_path=args.features_path)
     result, model_outputs = model.eval_model(test_set.tensor_dataset)
