@@ -23,7 +23,7 @@ def main():
 
     config = load_config(args)
     model = QuestModel(
-        config['model_type'], args.model_dir, num_labels=1, use_cuda=torch.cuda.is_available(), args=config
+        config['model_type'], args.model_dir, use_cuda=torch.cuda.is_available(), args=config
     )
     test_set = DatasetSentLevel(config, evaluate=True)
     test_set.make_dataset(args.test_file, features_path=args.features_path)
