@@ -18,7 +18,7 @@ def main():
     parser.add_argument('-m', '--model_dir')
     parser.add_argument('-o', '--output_dir')
     parser.add_argument('-c', '--config')
-    parser.add_argument('--cpu', store_action=None, required=False, default=False)
+    parser.add_argument('--cpu', action='store_true', required=False, default=False)
     parser.add_argument('--features_path', default=None, required=False)
     args = parser.parse_args()
 
