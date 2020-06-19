@@ -14,9 +14,18 @@ from transquest.util.draw import draw_scatterplot
 from transquest.data.normalizer import un_fit
 
 
+def count_parameters(model):
+    n_param = 0
+    for p in model.parameters():
+        if p.requires_grad:
+            n_param += p.numel()
+    return n_param
+
+
 def train_model(train_set, config, n_fold=None, test_size=None):
     config['running_seed'] = config['SEED'] * n_fold if n_fold is not None else config['SEED']
     model = QuestModel(config['model_type'], config['model_name'], use_cuda=torch.cuda.is_available(), args=config)
+    print('Trainable parameters: {}'.format(count_parameters(model.model)))
     if test_size:
         train_n, eval_df_n = train_test_split(train_set, test_size=test_size, random_state=config['running_seed'])
     else:
