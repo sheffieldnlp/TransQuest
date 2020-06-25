@@ -300,16 +300,29 @@ class DatasetWordLevel(Dataset):
 
 class DatasetSentLevel(Dataset):
 
-    def __init__(self, config, evaluate=False):
+    def __init__(self, config, evaluate=False, serving_mode=False):
         super().__init__(config, evaluate=evaluate)
         self.df = None
         self.examples = None
         self.tensors = None
+        if serving_mode:
+            self.make_dataset = self.make_dataset_text
+        else:
+            self.make_dataset = self.make_dataset_serving
 
-    def make_dataset(self, data_path, features_path=None, no_cache=False, verbose=True):
+    def make_dataset_text(self, data_path, features_path=None, no_cache=False, verbose=True):
         self.read(data_path, features_path=features_path)
         self.load_examples()
         self.make_tensors(no_cache=no_cache, verbose=verbose)
+
+    def make_dataset_serving(self, input_list):
+        self.process_request(input_list)
+        self.load_examples()
+        self.make_tensors(no_cache=True, verbose=False)
+
+    def process_request(self, input_list):
+        self.df = input_list
+        self.df['labels'] = None
 
     def read(self, data_path, features_path=None):
         select_columns = ['original', 'translation', 'z_mean']
