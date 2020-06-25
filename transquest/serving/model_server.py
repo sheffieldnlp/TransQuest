@@ -36,7 +36,7 @@ def predict():
     try:
         test_set = DatasetSentLevel(config, evaluate=True)
         test_set.make_dataset(input_json['data'])
-        result, model_outputs = model.eval_model(test_set.tensor_dataset, seving=False)
+        result, model_outputs = model.eval_model(test_set.tensor_dataset, serving=True)
     except Exception:
         logger.exception('Exception occurred when generating predictions!')
         raise
