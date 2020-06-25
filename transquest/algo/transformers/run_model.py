@@ -421,7 +421,7 @@ class QuestModel:
 
         return global_step, tr_loss / global_step
 
-    def eval_model(self, dataset, multi_label=False, output_dir=None, verbose=True, silent=False, **kwargs):
+    def eval_model(self, dataset, multi_label=False, output_dir=None, verbose=True, silent=False, serving=False, **kwargs):
         """
         Evaluates the model on eval_df. Saves results to output_dir.
 
@@ -448,7 +448,7 @@ class QuestModel:
         print('Evaluation set contains {} examples'.format(len(dataset)))
 
         result, model_outputs = self.evaluate(
-            dataset, output_dir, multi_label=multi_label, verbose=verbose, silent=silent, **kwargs
+            dataset, output_dir, multi_label=multi_label, verbose=verbose, silent=silent, serving=serving, **kwargs
         )
         self.results.update(result)
 
@@ -457,7 +457,7 @@ class QuestModel:
 
         return result, model_outputs
 
-    def evaluate(self, dataset, output_dir, multi_label=False, prefix="", verbose=True, silent=False, **kwargs):
+    def evaluate(self, dataset, output_dir, multi_label=False, prefix="", verbose=True, silent=False, serving=False, **kwargs):
         """
         Evaluates the model on eval_df.
 
@@ -524,9 +524,10 @@ class QuestModel:
                 preds = _remove_padding(preds, masks)
                 out_label_ids = _remove_padding(out_label_ids, masks)
 
-        result = self.compute_metrics(preds, out_label_ids)
-        result["eval_loss"] = eval_loss
-        results.update(result)
+        if not serving:
+            result = self.compute_metrics(preds, out_label_ids)
+            result["eval_loss"] = eval_loss
+            results.update(result)
         return results, model_outputs
 
     def compute_metrics(self, preds, labels):
