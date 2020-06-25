@@ -60,7 +60,7 @@ def main():
     parser.add_argument('--cpu', action='store_true', required=False, default=False)
     parser.add_argument('-p', '--port', type=int, required=True)
     parser.add_argument('--host', type=str, required=True)
-    parser.add_argument('-l', '--logging', type=str, required=False, default=None)
+    parser.add_argument('--logging', type=str, required=False, default=None)
     args = parser.parse_args()
     logger = create_logger(path=args.logging)
     load_model(args)
