@@ -322,7 +322,7 @@ class DatasetSentLevel(Dataset):
 
     def process_request(self, input_list):
         self.df = pd.DataFrame(input_list)
-        self.df['labels'] = None
+        self.df['labels'] = np.zeros(len(self.df))
 
     def read(self, data_path, features_path=None):
         select_columns = ['original', 'translation', 'z_mean']
