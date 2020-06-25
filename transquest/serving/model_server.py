@@ -23,7 +23,10 @@ def load_model(args):
 
 
 def build_response(predictions):
-    response = {'predictions': predictions.tolist()}
+    predictions = predictions.tolist()
+    if not type(predictions) is list:
+        predictions = [predictions]
+    response = {'predictions': predictions}
     return jsonify(response)
 
 
