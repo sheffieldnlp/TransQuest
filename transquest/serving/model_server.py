@@ -23,7 +23,7 @@ def load_model(args):
 
 
 def build_response(predictions):
-    response = {'predictions': predictions}
+    response = {'predictions': predictions.tolist()}
     return jsonify(response)
 
 
