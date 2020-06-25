@@ -321,7 +321,7 @@ class DatasetSentLevel(Dataset):
         self.make_tensors(no_cache=True, verbose=False)
 
     def process_request(self, input_list):
-        self.df = input_list
+        self.df = pd.DataFrame(input_list)
         self.df['labels'] = None
 
     def read(self, data_path, features_path=None):
