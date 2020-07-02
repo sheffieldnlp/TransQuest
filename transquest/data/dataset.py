@@ -56,10 +56,9 @@ class Dataset:
         pass
 
     def make_tensors(self, no_cache=False, verbose=True):
-        if not no_cache:
-            no_cache = self.config['no_cache']
 
-        os.makedirs(self.config['cache_dir'], exist_ok=True)
+        if not no_cache:
+            os.makedirs(self.config['cache_dir'], exist_ok=True)
 
         mode = 'dev' if self.evaluate else 'train'
         cached_features_file = os.path.join(
