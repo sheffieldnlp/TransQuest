@@ -37,7 +37,7 @@ def map_pieces(pieces_from, pieces_to, values, method, to_sep='▁', from_sep='@
     if method == 'first':
         return mapping_first(pieces_to, positions_from)
     elif method == 'average':
-        return mapping_first(pieces_to, positions_from)
+        return mapping_average(pieces_to, positions_from)
     else:
         raise ValueError
 
