@@ -440,15 +440,12 @@ class QuestModel:
             wrong_preds: List of InputExample objects corresponding to each incorrect prediction by the model
         """  # noqa: ignore flake8"
 
-        if not output_dir:
-            output_dir = self.args["output_dir"]
-
         self._move_model_to_device()
 
         print('Evaluation set contains {} examples'.format(len(dataset)))
 
         result, model_outputs = self.evaluate(
-            dataset, output_dir, multi_label=multi_label, verbose=verbose, silent=silent, serving=serving, **kwargs
+            dataset, multi_label=multi_label, verbose=verbose, silent=silent, serving=serving, **kwargs
         )
         self.results.update(result)
 
