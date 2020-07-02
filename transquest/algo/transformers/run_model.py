@@ -457,7 +457,7 @@ class QuestModel:
 
         return result, model_outputs
 
-    def evaluate(self, dataset, output_dir, multi_label=False, prefix="", verbose=True, silent=False, serving=False, **kwargs):
+    def evaluate(self, dataset, output_dir=None, multi_label=False, prefix="", verbose=True, silent=False, serving=False, **kwargs):
         """
         Evaluates the model on eval_df.
 
@@ -467,11 +467,8 @@ class QuestModel:
         device = self.device
         model = self.model
         args = self.args
-        eval_output_dir = output_dir
 
         results = {}
-        os.makedirs(eval_output_dir, exist_ok=True)
-
         eval_sampler = SequentialSampler(dataset)
         eval_dataloader = DataLoader(dataset, sampler=eval_sampler, batch_size=args["eval_batch_size"])
 
