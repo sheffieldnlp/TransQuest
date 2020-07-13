@@ -10,6 +10,8 @@ from transquest.data.load_config import load_config
 from transquest.algo.transformers.run_model import QuestModel
 from transquest.data.dataset import DatasetSentLevel
 
+from transquest.data.normalizer import un_fit
+
 
 app = Flask(__name__)
 
@@ -42,6 +44,7 @@ def predict():
         test_set = DatasetSentLevel(config, evaluate=True, serving_mode=True)
         test_set.make_dataset(input_json['data'])
         result, model_outputs = model.eval_model(test_set.tensor_dataset, serving=True)
+        model_outputs = un_fit(model_outputs)
     except Exception:
         logger.exception('Exception occurred when generating predictions!')
         raise
