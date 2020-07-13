@@ -36,6 +36,7 @@ def predict():
     global logger
     global config
     input_json = request.json
+    logger.info(input_json)
     try:
         test_set = DatasetSentLevel(config, evaluate=True)
         test_set.make_dataset(input_json['data'])
@@ -45,6 +46,7 @@ def predict():
         raise
     try:
         response = build_response(model_outputs)
+        logger.info(response)
     except Exception:
         logger.exception('Exception occurred when building response!')
         raise

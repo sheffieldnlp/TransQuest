@@ -442,14 +442,15 @@ class QuestModel:
 
         self._move_model_to_device()
 
-        print('Evaluation set contains {} examples'.format(len(dataset)))
+        if verbose and not serving:
+            print('Evaluation set contains {} examples'.format(len(dataset)))
 
         result, model_outputs = self.evaluate(
             dataset, multi_label=multi_label, verbose=verbose, silent=silent, serving=serving, **kwargs
         )
         self.results.update(result)
 
-        if verbose:
+        if verbose and not serving:
             print(self.results)
 
         return result, model_outputs
@@ -476,7 +477,7 @@ class QuestModel:
         masks = None
         model.eval()
 
-        for batch in tqdm(eval_dataloader, disable=args["silent"] or silent):
+        for batch in tqdm(eval_dataloader, disable=args["silent"] or silent or serving):
             batch = tuple(t.to(device) for t in batch)
 
             with torch.no_grad():
