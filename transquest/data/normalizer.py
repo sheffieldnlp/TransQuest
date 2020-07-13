@@ -12,6 +12,10 @@ def fit(df, label):
 
 def un_fit(df, label):
     x = df[[label]].values.astype(float)
-    x_unscaled = min_max_scaler.inverse_transform(x)
+    x_unscaled = un_scale(x)
     df[label] = x_unscaled
     return df
+
+
+def un_scale(x):
+    return min_max_scaler.inverse_transform(x)
