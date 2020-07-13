@@ -39,7 +39,7 @@ def predict():
     input_json = request.json
     logger.info(input_json)
     try:
-        test_set = DatasetSentLevel(config, evaluate=True)
+        test_set = DatasetSentLevel(config, evaluate=True, serving_mode=True)
         test_set.make_dataset(input_json['data'])
         result, model_outputs = model.eval_model(test_set.tensor_dataset, serving=True)
     except Exception:
