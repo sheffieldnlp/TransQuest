@@ -27,6 +27,7 @@ def build_response(predictions):
     if not type(predictions) is list:
         predictions = [predictions]
     response = {'predictions': predictions}
+    logger.info(response)
     return jsonify(response)
 
 
@@ -46,7 +47,6 @@ def predict():
         raise
     try:
         response = build_response(model_outputs)
-        logger.info(response)
     except Exception:
         logger.exception('Exception occurred when building response!')
         raise
