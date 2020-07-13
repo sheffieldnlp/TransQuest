@@ -309,9 +309,9 @@ class DatasetSentLevel(Dataset):
 
         self.absolute_scores = absolute_scores
         if serving_mode:
-            self.make_dataset = self.make_dataset_text
-        else:
             self.make_dataset = self.make_dataset_serving
+        else:
+            self.make_dataset = self.make_dataset_text
 
     def make_dataset_text(self, data_path, features_path=None, no_cache=False, verbose=True):
         self.read(data_path, features_path=features_path)
