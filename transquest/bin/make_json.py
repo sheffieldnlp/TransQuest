@@ -1,23 +1,31 @@
+import argparse
 import json
 import pandas as pd
 
-import sys
+import random
 
 
-def main(inpf, outf):
+def main(inpf, outf, mix=False):
     data = pd.read_csv(inpf, sep='\t', quoting=3)
+    src = data['originals']
+    tgt = data['translation']
+    if mix:
+        random.shuffle(tgt)
     data_list = []
-    for i, row in data.iterrows():
+    for srci, tgti in zip(src, tgt):
         data_list.append(
             {
-                'text_a': row['original'],
-                'text_b': row['translation'],
+                'text_a': srci,
+                'text_b': tgti,
             }
         )
     json.dump({'data': data_list}, open(outf, 'w'))
 
 
 if __name__ == '__main__':
-    inp_file = sys.argv[1]
-    out_file = sys.argv[2]
-    main(inp_file, out_file)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-i', '--input', required=True)
+    parser.add_argument('-o', '--output', required=True)
+    parser.add_argument('--mix', default=False, action='store_true')
+    args = parser.parse_args()
+    main(args.input, args.output, mix=args.mix)
