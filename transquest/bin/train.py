@@ -13,11 +13,12 @@ def main():
     parser.add_argument('--train_features_path', required=False, default=None)
     parser.add_argument('--test_features_path', required=False, default=None)
     parser.add_argument('--output_dir', required=True)
+    parser.add_argument('--use_absolute_scores', action='store_true', default=False, required=False)
     parser.add_argument('--config', required=True)
     args = parser.parse_args()
     print(args)
     config = load_config(args)
-    train_set = DatasetSentLevel(config, evaluate=False)
+    train_set = DatasetSentLevel(config, evaluate=False, absolute_scores=args.use_absolute_scores)
     train_set.make_dataset(args.train_path, features_path=args.train_features_path)
 
     test_sets = dict()
