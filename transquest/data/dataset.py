@@ -333,7 +333,7 @@ class DatasetSentLevel(Dataset):
         data = pd.read_csv(data_path, sep='\t', quoting=3)
         data = data[select_columns]
         data = data.rename(columns={'original': 'text_a', 'translation': 'text_b', scores_name: 'labels'})
-        if self.output_mode == 'regression' and not self.absolute_scores:
+        if self.output_mode == 'regression':
             data = fit(data, 'labels')
         if features_path is not None:
             features = pd.read_csv(features_path, sep='\t', header=None)
