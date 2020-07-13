@@ -7,7 +7,7 @@ import random
 
 def main(inpf, outf, mix=False):
     data = pd.read_csv(inpf, sep='\t', quoting=3)
-    src = data['originals']
+    src = data['original']
     tgt = data['translation']
     if mix:
         random.shuffle(tgt)
