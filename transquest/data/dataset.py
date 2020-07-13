@@ -301,11 +301,13 @@ class DatasetWordLevel(Dataset):
 
 class DatasetSentLevel(Dataset):
 
-    def __init__(self, config, evaluate=False, serving_mode=False):
+    def __init__(self, config, evaluate=False, serving_mode=False, absolute_scores=False):
         super().__init__(config, evaluate=evaluate)
         self.df = None
         self.examples = None
         self.tensors = None
+
+        self.absolute_scores = absolute_scores
         if serving_mode:
             self.make_dataset = self.make_dataset_text
         else:
@@ -326,10 +328,11 @@ class DatasetSentLevel(Dataset):
         self.df['labels'] = np.zeros(len(self.df))
 
     def read(self, data_path, features_path=None):
-        select_columns = ['original', 'translation', 'z_mean']
+        scores_name = 'mean' if self.absolute_scores else 'z_mean'
+        select_columns = ['original', 'translation', scores_name]
         data = pd.read_csv(data_path, sep='\t', quoting=3)
         data = data[select_columns]
-        data = data.rename(columns={'original': 'text_a', 'translation': 'text_b', 'z_mean': 'labels'})
+        data = data.rename(columns={'original': 'text_a', 'translation': 'text_b', scores_name: 'labels'})
         if self.output_mode == 'regression':
             data = fit(data, 'labels')
         if features_path is not None:
