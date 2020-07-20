@@ -7,6 +7,7 @@ from __future__ import absolute_import, division, print_function
 import math
 import os
 import random
+import time
 import warnings
 
 import numpy as np
@@ -446,10 +447,14 @@ class QuestModel:
         self._move_model_to_device()
 
         print('Evaluation set contains {} examples'.format(len(dataset)))
+        start_time = time.time()
 
         result, model_outputs = self.evaluate(
             dataset, output_dir, multi_label=multi_label, verbose=verbose, silent=silent, **kwargs
         )
+
+        print('Evaluation took {:.4f} seconds'.format(time.time() - start_time))
+
         self.results.update(result)
 
         if verbose:
