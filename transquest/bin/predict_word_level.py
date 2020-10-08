@@ -61,6 +61,7 @@ def main():
         os.path.join(args.src_file),
         os.path.join(args.tgt_file),
         os.path.join(args.tags_file),
+        no_cache=True,
     )
     model = QuestModel(config['model_type'], config['best_model_dir'], num_labels=1, use_cuda=torch.cuda.is_available(), args=config)
     _, preds = model.evaluate(test_data, config)
