@@ -205,7 +205,7 @@ class DatasetWordLevel(Dataset):
     def make_dataset(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None, no_cache=False, verbose=True):
         src, tgt, labels, features, mt_out = self.read(src_path, tgt_path, labels_path, features_path=features_path, mt_path=mt_path)
         examples = self.load_examples(src, tgt, labels, features, mt_out)
-        tensors = self.make_tensors(examples, no_cache=no_cache, verbose=verbose)
+        tensors = self.make_tensors(examples)
         return tensors
 
     @staticmethod
