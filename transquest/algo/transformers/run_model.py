@@ -469,7 +469,7 @@ class QuestModel:
 
         return result, model_outputs
 
-    def evaluate(self, dataset, output_dir=None, multi_label=False, prefix="", verbose=True, silent=False, **kwargs):
+    def evaluate(self, dataset, output_dir=None, multi_label=False, prefix="", verbose=True, return_logits=False, silent=False, **kwargs):
         """
         Evaluates the model on eval_df.
 
@@ -519,20 +519,27 @@ class QuestModel:
 
         if args['regression']:
             preds = np.squeeze(preds)
-        model_outputs = preds
 
         if not args['regression']:
             preds = np.argmax(preds, axis=-1)
             if args['word_level']:
                 def _remove_padding(a, mask):
                     res = []
+                    res_flat = []
                     for i, arr in enumerate(a):
-                        res.extend(arr[np.nonzero(mask[i])].squeeze())
-                    return res
-                preds = _remove_padding(preds, masks)
-                out_label_ids = _remove_padding(out_label_ids, masks)
+                        res.append(arr[np.nonzero(mask[i])].squeeze())
+                        res_flat.extend(arr[np.nonzero(mask[i])].squeeze())
+                    return res, res_flat
+                preds, preds_flat = _remove_padding(preds, masks)
+                out_label_ids, out_label_ids_flat = _remove_padding(out_label_ids, masks)
+            else:
+                preds_flat = preds
+                out_label_ids_flat = out_label_ids
+        else:
+            preds_flat = preds
+            out_label_ids_flat = out_label_ids
 
-        result = self.compute_metrics(preds, out_label_ids, **kwargs)
+        result = self.compute_metrics(preds_flat, out_label_ids_flat, **kwargs)
         result["eval_loss"] = eval_loss
         results.update(result)
 
