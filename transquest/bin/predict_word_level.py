@@ -32,6 +32,7 @@ def main():
         os.path.join(args.tags_file),
         no_cache=True,
     )
+    assert os.path.isdir(args.model_dir)
     model = QuestModel(config['model_type'], args.model_dir, use_cuda=torch.cuda.is_available(), args=config)
     _, preds = model.evaluate(test_data)
     out = open(args.out_file, 'w') if args.out_file is not None else sys.stdout
