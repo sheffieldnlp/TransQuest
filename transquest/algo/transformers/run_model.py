@@ -523,7 +523,6 @@ class QuestModel:
 
         if not args['regression']:
             preds = np.argmax(preds, axis=-1)
-            model_outputs = preds
             if args['word_level']:
                 def _remove_padding(a, mask):
                     res = []
@@ -544,7 +543,7 @@ class QuestModel:
                 for key in sorted(result.keys()):
                     writer.write("{} = {}\n".format(key, str(result[key])))
 
-        return results, model_outputs
+        return results, preds
 
     def compute_metrics(self, preds, labels, multi_label=False, **kwargs):
         """

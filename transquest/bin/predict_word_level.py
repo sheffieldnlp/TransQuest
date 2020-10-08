@@ -35,7 +35,7 @@ def main():
     _, preds = model.evaluate(test_data)
     out = open(args.out_file, 'w') if args.out_file is not None else sys.stdout
     for pred in preds:
-        out.write('{}\n'.format(pred))
+        out.write('{}\n'.format(' '.join([str(p) for p in pred])))
 
 
 if __name__ == '__main__':
