@@ -481,6 +481,8 @@ class QuestModel:
         args = self.args
         results = {}
 
+        self._move_model_to_device()
+
         eval_sampler = SequentialSampler(dataset)
         eval_dataloader = DataLoader(dataset, sampler=eval_sampler, batch_size=args["eval_batch_size"])
 
