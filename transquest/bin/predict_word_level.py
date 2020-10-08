@@ -51,6 +51,7 @@ def main():
     parser.add_argument('--config', required=True)
     parser.add_argument('--src_file', required=True)
     parser.add_argument('--tgt_file', required=True)
+    parser.add_argument('--tags_file', required=True)
     parser.add_argument('--out_file', required=False, default=None)
     args = parser.parse_args()
     config = load_config(args)
