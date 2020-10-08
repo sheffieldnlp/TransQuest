@@ -37,6 +37,7 @@ setup(
     entry_points={
         "console_scripts": [
             'tq-predict=transquest.bin.predict:main',
+            'tq-predict-word=transquest.bin.predict_word_level:main',
             'tq-train=transquest.bin.train:main',
             'tq-train-word=transquest.bin.train_word_level:main',
         ]
