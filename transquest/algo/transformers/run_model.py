@@ -479,10 +479,7 @@ class QuestModel:
         device = self.device
         model = self.model
         args = self.args
-        eval_output_dir = output_dir
-
         results = {}
-        os.makedirs(eval_output_dir, exist_ok=True)
 
         eval_sampler = SequentialSampler(dataset)
         eval_dataloader = DataLoader(dataset, sampler=eval_sampler, batch_size=args["eval_batch_size"])
@@ -540,8 +537,9 @@ class QuestModel:
         result["eval_loss"] = eval_loss
         results.update(result)
 
-        if eval_output_dir is not None:
-            output_eval_file = os.path.join(eval_output_dir, "eval_results.txt")
+        if output_dir is not None:
+            os.makedirs(output_dir, exist_ok=True)
+            output_eval_file = os.path.join(output_dir, "eval_results.txt")
             with open(output_eval_file, "w") as writer:
                 for key in sorted(result.keys()):
                     writer.write("{} = {}\n".format(key, str(result[key])))
