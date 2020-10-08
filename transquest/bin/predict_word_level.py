@@ -17,6 +17,7 @@ from transquest.data.dataset import DatasetWordLevel
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', required=True)
+    parser.add_argument('--model_dir', required=True)
     parser.add_argument('--src_file', required=True)
     parser.add_argument('--tgt_file', required=True)
     parser.add_argument('--tags_file', required=True)
@@ -31,7 +32,7 @@ def main():
         os.path.join(args.tags_file),
         no_cache=True,
     )
-    model = QuestModel(config['model_type'], config['best_model_dir'], num_labels=1, use_cuda=torch.cuda.is_available(), args=config)
+    model = QuestModel(config['model_type'], args.model_dir, num_labels=1, use_cuda=torch.cuda.is_available(), args=config)
     _, preds = model.evaluate(test_data)
     out = open(args.out_file, 'w') if args.out_file is not None else sys.stdout
     for pred in preds:
