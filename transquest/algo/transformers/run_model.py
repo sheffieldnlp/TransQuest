@@ -469,7 +469,7 @@ class QuestModel:
 
         return result, model_outputs
 
-    def evaluate(self, dataset, output_dir, multi_label=False, prefix="", verbose=True, silent=False, **kwargs):
+    def evaluate(self, dataset, output_dir=None, multi_label=False, prefix="", verbose=True, silent=False, **kwargs):
         """
         Evaluates the model on eval_df.
 
@@ -540,10 +540,11 @@ class QuestModel:
         result["eval_loss"] = eval_loss
         results.update(result)
 
-        output_eval_file = os.path.join(eval_output_dir, "eval_results.txt")
-        with open(output_eval_file, "w") as writer:
-            for key in sorted(result.keys()):
-                writer.write("{} = {}\n".format(key, str(result[key])))
+        if eval_output_dir is not None:
+            output_eval_file = os.path.join(eval_output_dir, "eval_results.txt")
+            with open(output_eval_file, "w") as writer:
+                for key in sorted(result.keys()):
+                    writer.write("{} = {}\n".format(key, str(result[key])))
 
         return results, model_outputs
 
