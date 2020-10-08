@@ -51,35 +51,10 @@ class Dataset:
     def load_examples(self, **kwargs):
         pass
 
-    def make_tensors(self, examples, no_cache=False, verbose=True):
-        if not no_cache:
-            no_cache = self.config['no_cache']
-
+    def make_tensors(self, examples):
         mode = 'dev' if self.evaluate else 'train'
-        cached_features_file = None
-        if not no_cache:
-            os.makedirs(self.config['cache_dir'], exist_ok=True)
-            cached_features_file = os.path.join(
-                self.config['cache_dir'],
-                'cached_{}_{}_{}_{}_{}'.format(
-                    mode, self.config['model_type'], self.max_seq_length, self.config['num_labels'], len(examples),
-                ),
-            )
-
-        if cached_features_file is not None and os.path.exists(cached_features_file) and (
-                (not self.config['reprocess_input_data'] and not no_cache) or (
-                mode == 'dev' and self.config['use_cached_eval_features'] and not no_cache)
-        ):
-            features = torch.load(cached_features_file)
-            if verbose:
-                print(f"Features loaded from cache at {cached_features_file}")
-        else:
-            if verbose:
-                print(f"Converting to features started. Cache is not used.")
-            features = self._convert_examples_to_features(examples)
-            if not no_cache:
-                torch.save(features, cached_features_file)
-
+        assert mode == 'dev'
+        features = self._convert_examples_to_features(examples)
         all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
         all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
         all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
