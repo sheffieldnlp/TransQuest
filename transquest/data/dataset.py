@@ -52,8 +52,6 @@ class Dataset:
         pass
 
     def make_tensors(self, examples):
-        mode = 'dev' if self.evaluate else 'train'
-        assert mode == 'dev'
         features = self._convert_examples_to_features(examples)
         all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
         all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
@@ -281,7 +279,7 @@ class DatasetSentLevel(Dataset):
     def make_dataset(self, data_path, features_path=None, no_cache=False, verbose=True):
         data = self.read(data_path, features_path=features_path)
         examples = self.load_examples(data)
-        tensors = self.make_tensors(examples, no_cache=no_cache, verbose=verbose)
+        tensors = self.make_tensors(examples)
         return tensors
 
     def read(self, data_path, features_path=None):
