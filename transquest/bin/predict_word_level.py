@@ -35,8 +35,8 @@ def main():
     _, preds = model.evaluate(test_data)
     res = []
     for i, preds_i in enumerate(preds):
-        bpe_pieces = test_set.tokenizer.tokenize(test_set.examples[i].tgt)
-        mt_tokens = test_set.examples[i].tgt
+        bpe_pieces = test_set.tokenizer.tokenize(test_set.examples[i].text_a)
+        mt_tokens = test_set.examples[i].text_a
         mapped = map_pieces(bpe_pieces, mt_tokens, preds_i, 'average')
         res.append([int(v) for v in mapped])
     outf = open(args.out_file, 'w') if args.out_file is not None else sys.stdout
