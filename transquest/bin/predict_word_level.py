@@ -4,14 +4,11 @@ import sys
 
 import torch
 
-from sklearn.metrics import mean_absolute_error
-from sklearn.model_selection import train_test_split
-
-from transquest.algo.transformers.evaluation import pearson_corr, spearman_corr
 from transquest.algo.transformers.run_model import QuestModel
 
 from transquest.data.load_config import load_config
 from transquest.data.dataset import DatasetWordLevel
+from transquest.data.mapping_tokens_bpe import map_pieces
 
 
 def main():
@@ -36,9 +33,15 @@ def main():
     assert os.path.isdir(args.model_dir)
     model = QuestModel(config['model_type'], args.model_dir, use_cuda=torch.cuda.is_available(), args=config)
     _, preds = model.evaluate(test_data)
-    out = open(args.out_file, 'w') if args.out_file is not None else sys.stdout
+    res = []
+    for i, preds_i in enumerate(preds):
+        bpe_pieces = test_set.tokenizer.tokenize(test_set.examples[i].tgt)
+        mt_tokens = test_set.examples[i].tgt
+        mapped = map_pieces(bpe_pieces, mt_tokens, preds_i, 'average')
+        res.append([int(v) for v in mapped])
+    outf = open(args.out_file, 'w') if args.out_file is not None else sys.stdout
     for pred in preds:
-        out.write('{}\n'.format(' '.join([str(p) for p in pred])))
+        outf.write('{}\n'.format(' '.join([str(p) for p in pred])))
 
 
 if __name__ == '__main__':

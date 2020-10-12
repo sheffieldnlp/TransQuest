@@ -45,14 +45,16 @@ class Dataset:
         self.sep_token = self.tokenizer.sep_token
         self.sep_token_extra = False
 
+        self.examples = []
+
     def read(self, **kwargs):
         pass
 
     def load_examples(self, **kwargs):
         pass
 
-    def make_tensors(self, examples):
-        features = self._convert_examples_to_features(examples)
+    def make_tensors(self):
+        features = self._convert_examples_to_features(self.examples)
         all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
         all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
         all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
@@ -202,12 +204,11 @@ class DatasetWordLevel(Dataset):
 
     def make_dataset(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None, no_cache=False, verbose=True):
         src, tgt, labels, features, mt_out = self.read(src_path, tgt_path, labels_path, features_path=features_path, mt_path=mt_path)
-        examples = self.load_examples(src, tgt, labels, features, mt_out)
-        tensors = self.make_tensors(examples)
+        self.load_examples(src, tgt, labels, features, mt_out)
+        tensors = self.make_tensors()
         return tensors
 
-    @staticmethod
-    def load_examples(src, tgt, labels, features=None, mt_out=None):
+    def load_examples(self, src, tgt, labels, features=None, mt_out=None):
         examples = [
             InputExampleWord(guid=i, text_a=text_b, label=label)
             for i, (text_a, text_b, label) in enumerate(
@@ -219,7 +220,7 @@ class DatasetWordLevel(Dataset):
                 for i, ex in enumerate(examples):
                     ex.features_inject[feature_name] = features[feature_name][i]
                     ex.mt_tokens = mt_out[i]
-        return examples
+        self.examples = examples
 
     def read(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None):
         labels = self._read_labels(labels_path)
@@ -278,8 +279,8 @@ class DatasetSentLevel(Dataset):
 
     def make_dataset(self, data_path, features_path=None, no_cache=False, verbose=True):
         data = self.read(data_path, features_path=features_path)
-        examples = self.load_examples(data)
-        tensors = self.make_tensors(examples)
+        self.load_examples(data)
+        tensors = self.make_tensors()
         return tensors
 
     def read(self, data_path, features_path=None):
@@ -312,7 +313,7 @@ class DatasetSentLevel(Dataset):
                     values = df[col].to_list()
                     for i, ex in enumerate(examples):
                         ex.features_inject[col] = values[i]
-        return examples
+        self.examples = examples
 
     def _map_labels(self, example, **kwargs):
         return example.label
