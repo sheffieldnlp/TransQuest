@@ -40,8 +40,8 @@ def main():
         mapped = map_pieces(bpe_pieces, mt_tokens, preds_i, 'average')
         res.append([int(v) for v in mapped])
     outf = open(args.out_file, 'w') if args.out_file is not None else sys.stdout
-    for pred in preds:
-        outf.write('{}\n'.format(' '.join([str(p) for p in pred])))
+    for preds_i in res:
+        outf.write('{}\n'.format(' '.join([str(p) for p in preds_i])))
 
 
 if __name__ == '__main__':

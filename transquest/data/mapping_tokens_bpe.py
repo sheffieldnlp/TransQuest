@@ -2,7 +2,12 @@ import numpy as np
 
 
 def map_pieces(pieces_from, pieces_to, values, method, to_sep='▁', from_sep=None):
-    assert len(pieces_from) == len(values)
+    try:
+        assert len(pieces_from) == len(values)
+    except AssertionError:
+        print(pieces_from)
+        print(values)
+        raise
     if to_sep is not None:
         pieces_to = [p.replace(to_sep, '').strip() for p in pieces_to]
     if from_sep is not None:
