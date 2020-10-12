@@ -24,7 +24,7 @@ def main():
     config = load_config(args)
     config['model_name'] = args.model_dir
     test_set = DatasetWordLevel(config, evaluate=True)
-    test_data = test_set.make_dataset(
+    test_set.make_dataset(
         os.path.join(args.src_file),
         os.path.join(args.tgt_file),
         os.path.join(args.tags_file),
@@ -32,10 +32,11 @@ def main():
     )
     assert os.path.isdir(args.model_dir)
     model = QuestModel(config['model_type'], args.model_dir, use_cuda=torch.cuda.is_available(), args=config)
-    _, preds = model.evaluate(test_data)
+    _, preds = model.evaluate(test_set.tensors)
     res = []
     for i, preds_i in enumerate(preds):
-        bpe_pieces = test_set.tokenizer.tokenize(test_set.examples[i].text_a)
+        preds_i = [p for j, p in enumerate(preds_i) if test_set.examples[i].mask[j]]
+        bpe_pieces = test_set.examples[i].tokens_a
         mt_tokens = test_set.examples[i].text_a
         mapped = map_pieces(bpe_pieces, mt_tokens, preds_i, 'average')
         res.append([int(v) for v in mapped])

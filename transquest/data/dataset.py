@@ -45,7 +45,8 @@ class Dataset:
         self.sep_token = self.tokenizer.sep_token
         self.sep_token_extra = False
 
-        self.examples = []
+        self.examples = {}
+        self.tensors = []
 
     def read(self, **kwargs):
         pass
@@ -54,7 +55,7 @@ class Dataset:
         pass
 
     def make_tensors(self):
-        features = self._convert_examples_to_features(self.examples)
+        features = self._convert_examples_to_features()
         all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
         all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
         all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
@@ -68,10 +69,9 @@ class Dataset:
         tensors = [all_input_ids, all_input_mask, all_segment_ids, all_label_ids]
         if all_features is not None:
             tensors.append(all_features)
-        dataset = TensorDataset(*tensors)
-        return dataset
+        self.tensors = TensorDataset(*tensors)
 
-    def _convert_examples_to_features(self, examples):
+    def _convert_examples_to_features(self):
         """ Loads a data file into a list of `InputBatch`s
             `cls_token_at_end` define the location of the CLS token:
                 - False (Default, BERT/XLM pattern): [CLS] + A + [SEP] + B + [SEP]
@@ -80,18 +80,18 @@ class Dataset:
         """
         if self.use_multiprocessing:
             with Pool(self.process_count) as p:
-                features = list(tqdm(p.imap(self._convert_example_to_feature, examples, chunksize=500), total=len(examples),
+                features = list(tqdm(p.imap(self._convert_example_to_feature, range(len(self.examples)), chunksize=500), total=len(self.examples),
                                      disable=self.silent))
         else:
-            features = [self._convert_example_to_feature(example) for example in tqdm(examples, disable=self.silent)]
+            features = [self._convert_example_to_feature(idx) for idx in tqdm(range(len(self.examples)), disable=self.silent)]
         return features
 
-    def _convert_example_to_feature(self, example, pad_token=0, sequence_a_segment_id=0, sequence_b_segment_id=1,):
+    def _convert_example_to_feature(self, idx, pad_token=0, sequence_a_segment_id=0, sequence_b_segment_id=1,):
 
-        tokens_a = self.tokenizer.tokenize(example.text_a)
+        tokens_a = self.tokenizer.tokenize(self.examples[idx].text_a)
         tokens_b = None
-        if example.text_b:
-            tokens_b = self.tokenizer.tokenize(example.text_b)
+        if self.examples[idx].text_b:
+            tokens_b = self.tokenizer.tokenize(self.examples[idx].text_b)
             # Modifies `tokens_a` and `tokens_b` in place so that the total
             # length is less than the specified length.
             # Account for [CLS], [SEP], [SEP] with "- 3". " -4" for RoBERTa.
@@ -148,13 +148,15 @@ class Dataset:
         input_mask = self._pad(input_mask, [0 if self.mask_padding_with_zero else 1] * padding_length)
         segment_ids = self._pad(segment_ids, [self.pad_token_segment_id] * padding_length)
 
-        label = self._map_labels(example=example, bpe_tokens=tokens_a, padding=([pad_token] * padding_length))
-        features_inject = self._map_features(
-            example=example, bpe_tokens=tokens_a, padding=([pad_token] * padding_length))
+        label = self._map_labels(example=self.examples[idx], bpe_tokens=tokens_a, padding=([pad_token] * padding_length))
+        features_inject = self._map_features(example=self.examples[idx], bpe_tokens=tokens_a, padding=([pad_token] * padding_length))
 
         assert len(input_ids) == self.max_seq_length
         assert len(input_mask) == self.max_seq_length
         assert len(segment_ids) == self.max_seq_length
+
+        self.examples[idx].tokens_a = tokens_a
+        self.examples[idx].mask = input_mask
 
         return InputFeatures(
             input_ids=input_ids,
@@ -205,22 +207,18 @@ class DatasetWordLevel(Dataset):
     def make_dataset(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None, no_cache=False, verbose=True):
         src, tgt, labels, features, mt_out = self.read(src_path, tgt_path, labels_path, features_path=features_path, mt_path=mt_path)
         self.load_examples(src, tgt, labels, features, mt_out)
-        tensors = self.make_tensors()
-        return tensors
+        self.make_tensors()
 
     def load_examples(self, src, tgt, labels, features=None, mt_out=None):
-        examples = [
-            InputExampleWord(guid=i, text_a=text_b, label=label)
-            for i, (text_a, text_b, label) in enumerate(
+        for i, (text_a, text_b, label) in enumerate(
                 zip(src, tgt, labels)
-            )
-        ]
+        ):
+            self.examples[i] = InputExampleWord(guid=i, text_a=text_b, label=label)
         if features is not None:
             for feature_name in features:
-                for i, ex in enumerate(examples):
-                    ex.features_inject[feature_name] = features[feature_name][i]
-                    ex.mt_tokens = mt_out[i]
-        self.examples = examples
+                for i in self.examples:
+                    self.examples[i].features_inject[feature_name] = features[feature_name][i]
+                    self.examples[i].mt_tokens = mt_out[i]
 
     def read(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None):
         labels = self._read_labels(labels_path)
@@ -280,8 +278,7 @@ class DatasetSentLevel(Dataset):
     def make_dataset(self, data_path, features_path=None, no_cache=False, verbose=True):
         data = self.read(data_path, features_path=features_path)
         self.load_examples(data)
-        tensors = self.make_tensors()
-        return tensors
+        self.make_tensors()
 
     def read(self, data_path, features_path=None):
         select_columns = ['original', 'translation', 'z_mean']
@@ -301,19 +298,16 @@ class DatasetSentLevel(Dataset):
 
     def load_examples(self, df):
         assert 'text_a' in df.columns and 'text_b' in df.columns
-        examples = [
-            InputExampleSent(i, text_a, text_b, label)
-            for i, (text_a, text_b, label) in enumerate(
+        for i, (text_a, text_b, label) in enumerate(
                 zip(df["text_a"], df["text_b"], df["labels"])
-            )
-        ]
+        ):
+            self.examples[i] = InputExampleSent(i, text_a, text_b, label)
         if "{}1".format(DEFAULT_FEATURE_NAME) in df.columns:
             for col in df.columns:
                 if col.startswith(DEFAULT_FEATURE_NAME):
                     values = df[col].to_list()
-                    for i, ex in enumerate(examples):
-                        ex.features_inject[col] = values[i]
-        self.examples = examples
+                    for i in self.examples:
+                        self.examples[i].features_inject[col] = values[i]
 
     def _map_labels(self, example, **kwargs):
         return example.label
