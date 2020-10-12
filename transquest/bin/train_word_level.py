@@ -1,9 +1,5 @@
 import argparse
-import numpy as np
 import os
-import shutil
-
-from collections import defaultdict
 
 import torch
 
