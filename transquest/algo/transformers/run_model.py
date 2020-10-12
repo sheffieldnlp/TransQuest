@@ -271,6 +271,7 @@ class QuestModel:
         for _ in train_iterator:
             # epoch_iterator = tqdm(train_dataloader, desc="Iteration")
             for step, batch in enumerate(tqdm(train_dataloader, desc="Current iteration", disable=args["silent"])):
+                model.train()
                 batch = tuple(t.to(device) for t in batch)
 
                 inputs = self._get_inputs_dict(batch)
@@ -470,7 +471,7 @@ class QuestModel:
 
         return result, model_outputs
 
-    def evaluate(self, dataset, output_dir=None, multi_label=False, prefix="", verbose=True, return_logits=False, silent=False, **kwargs):
+    def evaluate(self, dataset, output_dir=None, silent=False, **kwargs):
         """
         Evaluates the model on eval_df.
 
@@ -587,7 +588,7 @@ class QuestModel:
         else:
             return {**{"mcc": mcc}, **extra_metrics}
 
-    def predict(self, dataset, multi_label=False):
+    def predict(self, dataset, return_scores=False):
         """
         Performs predictions on a list of text.
 
@@ -608,54 +609,42 @@ class QuestModel:
         eval_sampler = SequentialSampler(dataset)
         eval_dataloader = DataLoader(dataset, sampler=eval_sampler, batch_size=args["eval_batch_size"])
 
-        eval_loss = 0.0
-        nb_eval_steps = 0
         preds = None
-        out_label_ids = None
+        masks = None
+
+        model.eval()
 
         for batch in tqdm(eval_dataloader, disable=args["silent"]):
-            model.eval()
             batch = tuple(t.to(device) for t in batch)
 
             with torch.no_grad():
                 inputs = self._get_inputs_dict(batch)
                 outputs = model(**inputs)
-                tmp_eval_loss, logits = outputs[:2]
+                _, logits = outputs[:2]
 
-                if multi_label:
-                    logits = logits.sigmoid()
-
-                eval_loss += tmp_eval_loss.mean().item()
-
-            nb_eval_steps += 1
+                if args['word_level']:
+                    logits = torch.nn.functional.softmax(logits, dim=-1)
 
             if preds is None:
                 preds = logits.detach().cpu().numpy()
-                out_label_ids = inputs["labels"].detach().cpu().numpy()
+                masks = inputs["attention_mask"].detach().cpu().numpy()
             else:
                 preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
-                out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
+                masks = np.append(masks, inputs["attention_mask"].detach().cpu().numpy(), axis=0)
 
-        eval_loss = eval_loss / nb_eval_steps
-
-        if not multi_label and args["regression"] is True:
+        if args["regression"] is True:
             preds = np.squeeze(preds)
-            model_outputs = preds
         else:
-            model_outputs = preds
-            if multi_label:
-                if isinstance(args["threshold"], list):
-                    threshold_values = args["threshold"]
-                    preds = [
-                        [self._threshold(pred, threshold_values[i]) for i, pred in enumerate(example)]
-                        for example in preds
-                    ]
-                else:
-                    preds = [[self._threshold(pred, args["threshold"]) for pred in example] for example in preds]
-            else:
-                preds = np.argmax(preds, axis=1)
+            preds = preds[:, :, 1] if return_scores else np.argmax(preds, axis=-1)
+            if args['word_level']:
+                def _remove_padding(a, mask):
+                    res = []
+                    for i, arr in enumerate(a):
+                        res.append(arr[np.nonzero(mask[i])].squeeze())
+                    return res
+                preds = _remove_padding(preds, masks)
 
-        return preds, model_outputs
+        return preds
 
     def _threshold(self, x, threshold):
         if x >= threshold:
