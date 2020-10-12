@@ -21,6 +21,7 @@ def main():
     parser.add_argument('--out_file', required=False, default=None)
     parser.add_argument('--output_dir', required=False, default=None)
     parser.add_argument('--return_scores', required=False, default=False, action='store_true')
+    parser.add_argument('--wmt_format', required=False, default=False, action='store_true')
     args = parser.parse_args()
     config = load_config(args)
     config['model_name'] = args.model_dir
@@ -29,7 +30,7 @@ def main():
         os.path.join(args.src_file),
         os.path.join(args.tgt_file),
         os.path.join(args.tags_file),
-        no_cache=True,
+        wmt_format=args.wmt_format,
     )
     assert os.path.isdir(args.model_dir)
     model = QuestModel(config['model_type'], args.model_dir, use_cuda=torch.cuda.is_available(), args=config)

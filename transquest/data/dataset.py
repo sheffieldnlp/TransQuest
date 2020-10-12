@@ -200,8 +200,8 @@ class DatasetWordLevel(Dataset):
     def __init__(self, config, evaluate=False):
         super().__init__(config, evaluate=evaluate)
 
-    def make_dataset(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None, no_cache=False, verbose=True):
-        src, tgt, labels, features, mt_out = self.read(src_path, tgt_path, labels_path, features_path=features_path, mt_path=mt_path)
+    def make_dataset(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None, wmt_format=False):
+        src, tgt, labels, features, mt_out = self.read(src_path, tgt_path, labels_path, features_path=features_path, mt_path=mt_path, wmt_format=wmt_format)
         self.load_examples(src, tgt, labels, features, mt_out)
         self.make_tensors()
 
@@ -216,8 +216,8 @@ class DatasetWordLevel(Dataset):
                     self.examples[i].features_inject[feature_name] = features[feature_name][i]
                     self.examples[i].mt_tokens = mt_out[i]
 
-    def read(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None):
-        labels = self._read_labels(labels_path)
+    def read(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None, wmt_format=False):
+        labels = self._read_labels(labels_path, wmt_format=wmt_format)
         src = [l.strip() for l in open(src_path)]
         tgt = [l.strip() for l in open(tgt_path)]
         mt_out = None
@@ -230,7 +230,7 @@ class DatasetWordLevel(Dataset):
         return src, tgt, labels, features, mt_out
 
     @staticmethod
-    def _read_labels(path):
+    def _read_wmt_format(path):
         labels = []
         for line in open(path):
             tags = line.strip().split()
@@ -239,6 +239,12 @@ class DatasetWordLevel(Dataset):
             assert len(labels_i) * 2 + 1 == len(tags)
             labels.append(labels_i)
         return labels
+
+    def _read_labels(self, path, wmt_format=False):
+        if wmt_format:
+            return self._read_wmt_format(path)
+        else:
+            return [int(l.strip()) for l in open(path)]
 
     def _map_labels(self, example, bpe_tokens, padding):
         labelled_tokens = example.text_a.split()
