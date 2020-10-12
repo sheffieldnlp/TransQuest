@@ -23,6 +23,7 @@ def main():
     args = parser.parse_args()
 
     config = load_config(args)
+    config['model_name'] = args.model_dir
     model = QuestModel(
         config['model_type'], args.model_dir, num_labels=1, use_cuda=torch.cuda.is_available(), args=config
     )

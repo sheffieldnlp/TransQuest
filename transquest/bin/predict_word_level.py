@@ -25,6 +25,7 @@ def main():
     parser.add_argument('--output_dir', required=False, default=None)
     args = parser.parse_args()
     config = load_config(args)
+    config['model_name'] = args.model_dir
     test_set = DatasetWordLevel(config, evaluate=True)
     test_data = test_set.make_dataset(
         os.path.join(args.src_file),
