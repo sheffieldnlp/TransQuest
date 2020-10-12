@@ -39,7 +39,7 @@ def main():
         input_mask = test_set.tensors.tensors[1][i]
         preds_i = [p for j, p in enumerate(preds_i) if input_mask[j] and input_ids[j] not in (0, 2)]
         bpe_pieces = test_set.tokenizer.tokenize(test_set.examples[i].text_a)
-        mt_tokens = test_set.examples[i].text_a
+        mt_tokens = test_set.examples[i].text_a.split()
         mapped = map_pieces(bpe_pieces, mt_tokens, preds_i, 'average', from_sep='▁')
         res.append([int(v) for v in mapped])
     outf = open(args.out_file, 'w') if args.out_file is not None else sys.stdout
