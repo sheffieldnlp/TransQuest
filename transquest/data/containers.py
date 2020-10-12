@@ -38,6 +38,8 @@ class InputExampleWord(InputExample):
         assert type(self.label) is list
         self.mt_tokens = mt_tokens
         self.text_b = None
+        self.mask = None
+        self.tokens_a = None
 
 
 class InputFeatures(object):
