@@ -90,7 +90,8 @@ class QuestModel:
             self.model = model_class.from_pretrained(
                 model_name, config=self.config, weight=torch.Tensor(self.weight).to(self.device), **kwargs)
         else:
-            self.model = model_class.from_pretrained(model_name, config=self.config, **kwargs)
+            self.model, info = model_class.from_pretrained(model_name, config=self.config, output_loading_info=True, **kwargs)
+            print(info)
 
         self.results = {}
 
