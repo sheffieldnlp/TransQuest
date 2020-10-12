@@ -244,7 +244,10 @@ class DatasetWordLevel(Dataset):
         if wmt_format:
             return self._read_wmt_format(path)
         else:
-            return [int(v) for l in open(path) for v in l.strip().split()]
+            out = []
+            for line in open(path):
+                out.append([int(v) for v in line.split()])
+            return out
 
     def _map_labels(self, example, bpe_tokens, padding):
         labelled_tokens = example.text_a.split()
