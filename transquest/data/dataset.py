@@ -136,7 +136,6 @@ class Dataset:
             segment_ids = [self.cls_token_segment_id] + segment_ids
 
         input_ids = self.tokenizer.convert_tokens_to_ids(tokens)
-
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
         # tokens are attended to.
         input_mask = [1 if self.mask_padding_with_zero else 0] * len(input_ids)
