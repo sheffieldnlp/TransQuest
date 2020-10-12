@@ -35,8 +35,8 @@ def main():
     _, preds = model.evaluate(test_set.tensors)
     res = []
     for i, preds_i in enumerate(preds):
-        preds_i = [p for j, p in enumerate(preds_i) if test_set.examples[i].mask[j]]
-        bpe_pieces = test_set.examples[i].tokens_a
+        preds_i = [p for j, p in enumerate(preds_i) if test_set.tensors.tensors[1][i][j]]
+        bpe_pieces = test_set.tokenizer.tokenize(test_set.examples[i].text_a)
         mt_tokens = test_set.examples[i].text_a
         mapped = map_pieces(bpe_pieces, mt_tokens, preds_i, 'average')
         res.append([int(v) for v in mapped])

@@ -155,9 +155,6 @@ class Dataset:
         assert len(input_mask) == self.max_seq_length
         assert len(segment_ids) == self.max_seq_length
 
-        self.examples[idx].tokens_a = tokens_a
-        self.examples[idx].mask = input_mask
-
         return InputFeatures(
             input_ids=input_ids,
             input_mask=input_mask,
