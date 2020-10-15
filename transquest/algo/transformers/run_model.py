@@ -457,12 +457,8 @@ class QuestModel:
 
         if verbose and not serving:
             print('Evaluation set contains {} examples'.format(len(dataset)))
-        print('Evaluation set contains {} examples'.format(len(dataset)))
-        start_time = time.time()
 
-        result, model_outputs = self.evaluate(
-            dataset, output_dir, verbose=verbose, silent=silent, serving=serving, **kwargs
-        )
+        result, model_outputs = self.evaluate(dataset, output_dir, silent=silent, serving=serving,)
 
         self.results.update(result)
 
