@@ -25,13 +25,13 @@ def main(args):
         train_path, train_features_path = build_paths(args.train_path, lang_pair, args.train_features_path)
         train_set.read(train_path, features_path=train_features_path)
         train_set.load_examples()
-        train_examples.extend(train_set.examples)
+        train_examples.extend(train_set.examples.values())
 
         test_path, test_features_path = build_paths(args.test_path, lang_pair, args.test_features_path)
         test_sets[lang_pair] = DatasetSentLevel(config, evaluate=True)
         test_sets[lang_pair].make_dataset(test_path, features_path=test_features_path)
 
-    train_set.examples = train_examples
+    train_set.examples = {i: e for i, e in enumerate(train_examples)}
     train_set.make_tensors()
     train_set.df = None
 

@@ -1,21 +1,12 @@
 import argparse
-import numpy as np
 import os
-import shutil
 
-from collections import defaultdict
 
 import torch
 
-from sklearn.metrics import mean_absolute_error
-from sklearn.model_selection import train_test_split
-
-from transquest.algo.transformers.evaluation import pearson_corr, spearman_corr
-from transquest.algo.transformers.run_model import QuestModel
-
 from transquest.data.load_config import load_config
 from transquest.data.dataset import DatasetWordLevel
-from transquest.bin.util import train_model, evaluate_model
+from transquest.bin.util import train_model
 from transquest.algo.transformers.run_model import QuestModel
 
 
@@ -36,6 +27,7 @@ def main(args):
         os.path.join(args.data_dir, 'train', 'train.tags'),
         features_path=args.train_features_paths,
         mt_path=args.train_mt_path,
+        wmt_format=True,
     )
     test_set.make_dataset(
         os.path.join(args.data_dir, 'dev', 'dev.src'),
@@ -43,6 +35,7 @@ def main(args):
         os.path.join(args.data_dir, 'dev', 'dev.tags'),
         features_path=args.test_features_paths,
         mt_path=args.test_mt_path,
+        wmt_format=True,
     )
     train_cycle(train_set.tensor_dataset, test_set.tensor_dataset, config, args.test_size)
 

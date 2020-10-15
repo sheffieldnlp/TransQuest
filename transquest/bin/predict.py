@@ -3,7 +3,6 @@ import argparse
 import torch
 
 from transquest.algo.transformers.run_model import QuestModel
-from sklearn.metrics import mean_absolute_error
 
 from transquest.data.normalizer import un_fit
 from transquest.data.dataset import DatasetSentLevel

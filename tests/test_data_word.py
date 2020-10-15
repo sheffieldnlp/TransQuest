@@ -64,7 +64,7 @@ class TestDataWord(unittest.TestCase):
         pretrained_pieces = tokenizer.tokenize(mt)
         raw_mt_tokens = raw_mt_tokens.split()
         probas = [0.1] * len(raw_mt_tokens)
-        result = map_pieces(raw_mt_tokens, pretrained_pieces, probas, 'average')
+        result = map_pieces(raw_mt_tokens, pretrained_pieces, probas, 'average', from_sep=None)
         assert len(result) == len(pretrained_pieces)
 
     def test_maps_probas_to_bpe(self):
