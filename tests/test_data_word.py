@@ -13,32 +13,32 @@ test_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.join(test_dir, '../data')
 
 
-class TestDataSent(unittest.TestCase):
+class TestDataWord(unittest.TestCase):
 
     config = load_config(d.args)
 
     def test_reads_data(self):
         dataset = DatasetWordLevel(self.config)
-        src, tgt, labels, _, _ = dataset.read(d.src_txt, d.tgt_txt, d.tags_txt)
+        src, tgt, labels, _, _ = dataset.read(d.src_txt, d.tgt_txt, d.tags_txt,wmt_format=True)
         assert len(src) == len(tgt) == len(labels)
         for src_i, tgt_i, labels_i in zip(src, tgt, labels):
             assert len(tgt_i.split()) == len(labels_i)
 
     def test_loads_examples(self):
         dataset = DatasetWordLevel(self.config)
-        src, tgt, labels, _, _ = dataset.read(d.src_txt, d.tgt_txt, d.tags_txt)
-        examples = dataset.load_examples(src, tgt, labels)
-        assert len(examples) == len(src)
+        src, tgt, labels, _, _ = dataset.read(d.src_txt, d.tgt_txt, d.tags_txt, wmt_format=True)
+        dataset.load_examples(src, tgt, labels)
+        assert len(dataset.examples) == len(src)
 
     def test_makes_dataset(self):
         dataset = DatasetWordLevel(self.config)
-        train = dataset.make_dataset(d.src_txt, d.tgt_txt, d.tags_txt)
-        print(len(train))
+        dataset.make_dataset(d.src_txt, d.tgt_txt, d.tags_txt, wmt_format=True)
+        print(len(dataset.tensor_dataset.tensors))
 
     def test_makes_dataset_with_features(self):
         dataset = DatasetWordLevel(self.config)
-        train = dataset.make_dataset(d.src_txt, d.tgt_txt, d.tags_txt, [d.features_path], d.mt_path)
-        assert train.tensors[4].shape == (5, 1, 128)
+        dataset.make_dataset(d.src_txt, d.tgt_txt, d.tags_txt, [d.features_path], d.mt_path, wmt_format=True)
+        assert dataset.tensor_dataset.tensors[4].shape == (5, 1, 128)
 
     def test_maps_labels_to_bpe(self):
         tokens = '1934 besuchte José Ortega y Gasset Husserl in Freiburg .'.split()

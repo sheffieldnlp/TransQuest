@@ -39,7 +39,7 @@ def define_metrics(config):
 
 def train_model(train_set, config, n_fold=None, test_size=None, return_model=False):
     config['running_seed'] = config['SEED'] * n_fold if n_fold is not None else config['SEED']
-    model = QuestModel(config['model_type'], config['model_name'], num_labels=1, use_cuda=torch.cuda.is_available(), args=config)
+    model = QuestModel(config['model_type'], config['model_name'], use_cuda=torch.cuda.is_available(), args=config)
     if test_size:
         train_n, eval_df_n = train_test_split(train_set, test_size=test_size, random_state=config['running_seed'])
     else:
@@ -53,7 +53,7 @@ def train_model(train_set, config, n_fold=None, test_size=None, return_model=Fal
 
 def evaluate_model(test_set, config, model=None):
     if model is None:
-        model = QuestModel(config['model_type'], config['best_model_dir'], num_labels=1, use_cuda=torch.cuda.is_available(), args=config)
+        model = QuestModel(config['model_type'], config['best_model_dir'], use_cuda=torch.cuda.is_available(), args=config)
     if config['regression']:  # TODO: this is repeated
         _, model_outputs = model.eval_model(test_set, pearson_corr=pearson_corr, spearman_corr=spearman_corr, mae=mean_absolute_error)
     else:
@@ -97,14 +97,13 @@ def train_cycle(train, test, test_tsv, config, output_dir, test_size):
             test_tsv = un_fit(test_tsv, predictions_column(r))
         correlations['pearson'].append(pearsonr(test_tsv[predictions_column(r)], test_tsv['labels'])[0])
         correlations['spearman'].append(spearmanr(test_tsv[predictions_column(r)], test_tsv['labels'])[0])
-        correlations['accuracy'].append(accuracy_score(test_tsv['labels'], test_tsv[predictions_column(r)]))
         plot_path = os.path.join(output_dir, 'results_{}.png'.format(r))
         draw_scatterplot(test_tsv, 'labels', predictions_column(r), plot_path, config['model_type'] + ' ' + config['model_name'])
 
     preds_path = os.path.join(output_dir, 'results.tsv')
     test_tsv.to_csv(preds_path, header=True, sep='\t', index=False, encoding='utf-8')
 
-    for corr in ('pearson', 'spearman', 'accuracy'):
+    for corr in ('pearson', 'spearman'):
         print(corr)
         print(correlations[corr])
         print(np.mean(correlations[corr]))

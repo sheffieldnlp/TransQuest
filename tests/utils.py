@@ -8,9 +8,10 @@ data_dir = os.path.join(test_dir, '../data')
 
 class Args:
 
-    def __init__(self, config, output_dir):
+    def __init__(self, config, output_dir=None, model_dir=None):
         self.config = config
         self.output_dir = output_dir
+        self.model_dir = model_dir
 
 
 class DataSent:
@@ -22,7 +23,7 @@ class DataSent:
     config_path = os.path.join(data_dir, 'toy', 'toy.json')
     features_pref = os.path.join(data_dir, 'toy', 'features')
     out_dir = os.path.join(data_dir, 'toy', 'output')
-    args = Args(config_path, out_dir)
+    args = Args(config_path, output_dir=out_dir)
 
 
 class DataWord:
@@ -34,4 +35,9 @@ class DataWord:
     features_path = os.path.join(data_dir, 'toy-word-level', 'toy.word_probas')
     mt_path = os.path.join(data_dir, 'toy-word-level', 'toy.mt_out')
     out_dir = os.path.join(data_dir, 'toy-word-level', 'output')
-    args = Args(config_path, out_dir)
+    args = Args(config_path, output_dir=out_dir)
+
+
+class DataWordTest(DataWord):
+
+    args = Args(DataWord.config_path, model_dir=os.path.join(data_dir, 'toy-word-level', 'model'))

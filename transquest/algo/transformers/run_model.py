@@ -13,15 +13,10 @@ import numpy as np
 import pandas as pd
 import torch
 
-from scipy.stats import mode
-from scipy.stats import spearmanr
-
 
 from sklearn.metrics import (
     matthews_corrcoef,
     confusion_matrix,
-    label_ranking_average_precision_score,
-    accuracy_score,
 )
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
@@ -41,7 +36,7 @@ except ImportError:
 
 class QuestModel:
     def __init__(
-        self, model_type, model_name, num_labels=None, weight=None, args=None, use_cuda=True, cuda_device=-1, **kwargs,
+        self, model_type, model_name, weight=None, args=None, use_cuda=True, cuda_device=-1, **kwargs,
     ):
 
         """
@@ -132,7 +127,7 @@ class QuestModel:
         args=None,
         eval_df=None,
         verbose=True,
-        **kwargs
+        **extra_metrics
     ):
         """
         Trains the model using 'train_df'
@@ -144,7 +139,7 @@ class QuestModel:
             show_running_loss (optional): Set to False to prevent running loss from being printed to console. Defaults to True.
             args (optional): Optional changes to the args dict of the model. Any changes made will persist for the model.
             eval_df (optional): A DataFrame against which evaluation will be performed when evaluate_during_training is enabled. Is required if evaluate_during_training is enabled.
-            **kwargs: Additional metrics that should be used. Pass in the metrics as keyword arguments (name of metric: function to use). E.g. f1=sklearn.metrics.f1_score.
+            **extra_metrics: Additional metrics that should be used. Pass in the metrics as keyword arguments (name of metric: function to use). E.g. f1=sklearn.metrics.f1_score.
                         A metric function should take in two parameters. The first parameter will be the true labels, and the second parameter will be the predictions.
 
         Returns:
@@ -182,7 +177,7 @@ class QuestModel:
             show_running_loss=show_running_loss,
             eval_df=eval_df,
             verbose=verbose,
-            **kwargs,
+            **extra_metrics,
         )
 
         model_to_save = self.model.module if hasattr(self.model, "module") else self.model
@@ -201,7 +196,7 @@ class QuestModel:
         show_running_loss=True,
         eval_df=None,
         verbose=True,
-        **kwargs,
+        **extra_metrics,
     ):
         """
         Trains the model on train_dataset.
@@ -261,7 +256,7 @@ class QuestModel:
         early_stopping_counter = 0
 
         if args["evaluate_during_training"]:
-            training_progress_scores = self._create_training_progress_scores(multi_label, **kwargs)
+            training_progress_scores = self._create_training_progress_scores(multi_label, **extra_metrics)
 
         if args["wandb_project"]:
             wandb.init(project=args["wandb_project"], config={**args}, **args["wandb_kwargs"])
@@ -340,7 +335,7 @@ class QuestModel:
                     ):
                         # Only evaluate when single GPU otherwise metrics may not average well
                         results, _ = self.eval_model(
-                            eval_df, verbose=verbose and args["evaluate_during_training_verbose"], silent=True, **kwargs
+                            eval_df, verbose=verbose and args["evaluate_during_training_verbose"], silent=True, **extra_metrics
                         )
                         for key, value in results.items():
                             tb_writer.add_scalar("eval_{}".format(key), value, global_step)
@@ -397,7 +392,7 @@ class QuestModel:
 
             if args["evaluate_during_training"]:
                 results, _ = self.eval_model(
-                    eval_df, verbose=verbose and args["evaluate_during_training_verbose"], silent=True, **kwargs
+                    eval_df, verbose=verbose and args["evaluate_during_training_verbose"], silent=True, **extra_metrics
                 )
 
                 self._save_model(output_dir_current, results=results)
@@ -435,7 +430,7 @@ class QuestModel:
 
         return global_step, tr_loss / global_step
 
-    def eval_model(self, dataset, multi_label=False, output_dir=None, verbose=True, silent=False, **kwargs):
+    def eval_model(self, dataset, output_dir=None, verbose=True, silent=False, **extra_metrics):
         """
         Evaluates the model on eval_df. Saves results to output_dir.
 
@@ -445,7 +440,7 @@ class QuestModel:
             output_dir: The directory where model files will be saved. If not given, self.args['output_dir'] will be used.
             verbose: If verbose, results will be printed to the console on completion of evaluation.
             silent: If silent, tqdm progress bars will be hidden.
-            **kwargs: Additional metrics that should be used. Pass in the metrics as keyword arguments (name of metric: function to use). E.g. f1=sklearn.metrics.f1_score.
+            **extra_metrics: Additional metrics that should be used. Pass in the metrics as keyword arguments (name of metric: function to use). E.g. f1=sklearn.metrics.f1_score.
                         A metric function should take in two parameters. The first parameter will be the true labels, and the second parameter will be the predictions.
 
         Returns:
@@ -462,7 +457,7 @@ class QuestModel:
         print('Evaluation set contains {} examples'.format(len(dataset)))
 
         result, model_outputs = self.evaluate(
-            dataset, output_dir, multi_label=multi_label, verbose=verbose, silent=silent, **kwargs
+            dataset, output_dir, silent=silent, **extra_metrics
         )
         self.results.update(result)
 
@@ -471,7 +466,7 @@ class QuestModel:
 
         return result, model_outputs
 
-    def evaluate(self, dataset, output_dir=None, silent=False, **kwargs):
+    def evaluate(self, dataset, output_dir=None, silent=False, **extra_metrics):
         """
         Evaluates the model on eval_df.
 
@@ -543,7 +538,7 @@ class QuestModel:
             preds_flat = preds
             out_label_ids_flat = out_label_ids
 
-        result = self.compute_metrics(preds_flat, out_label_ids_flat, **kwargs)
+        result = self.compute_metrics(preds_flat, out_label_ids_flat, **extra_metrics)
         result["eval_loss"] = eval_loss
         results.update(result)
 
@@ -556,14 +551,14 @@ class QuestModel:
 
         return results, preds
 
-    def compute_metrics(self, preds, labels, multi_label=False, **kwargs):
+    def compute_metrics(self, preds, labels, **extra_metrics):
         """
         Computes the evaluation metrics for the model predictions.
 
         Args:
             preds: Model predictions
             labels: Ground truth labels
-            **kwargs: Additional metrics that should be used. Pass in the metrics as keyword arguments (name of metric: function to use). E.g. f1=sklearn.metrics.f1_score.
+            **extra_metrics: Additional metrics that should be used. Pass in the metrics as keyword arguments (name of metric: function to use). E.g. f1=sklearn.metrics.f1_score.
                         A metric function should take in two parameters. The first parameter will be the true labels, and the second parameter will be the predictions.
 
         Returns:
@@ -573,12 +568,12 @@ class QuestModel:
 
         assert len(preds) == len(labels)
 
-        extra_metrics = {}
-        for metric, func in kwargs.items():
-            extra_metrics[metric] = func(labels, preds)
+        extra_results = {}
+        for metric, func in extra_metrics.items():
+            extra_results[metric] = func(labels, preds)
 
         if self.args['regression']:
-            return {**extra_metrics}
+            return {**extra_results}
 
         mcc = matthews_corrcoef(labels, preds)
 
@@ -586,7 +581,7 @@ class QuestModel:
             tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
             return {**{"mcc": mcc, "tp": tp, "tn": tn, "fp": fp, "fn": fn}, **extra_metrics}
         else:
-            return {**{"mcc": mcc}, **extra_metrics}
+            return {**{"mcc": mcc}, **extra_results}
 
     def predict(self, dataset, return_scores=False):
         """
@@ -669,8 +664,8 @@ class QuestModel:
     def _get_last_metrics(self, metric_values):
         return {metric: values[-1] for metric, values in metric_values.items()}
 
-    def _create_training_progress_scores(self, multi_label, **kwargs):
-        extra_metrics = {key: [] for key in kwargs}
+    def _create_training_progress_scores(self, multi_label, **extra_metrics):
+        extra_metrics = {key: [] for key in extra_metrics}
         if multi_label:
             training_progress_scores = {
                 "global_step": [],

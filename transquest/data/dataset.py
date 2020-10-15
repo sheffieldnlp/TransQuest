@@ -46,7 +46,7 @@ class Dataset:
         self.sep_token_extra = False
 
         self.examples = {}
-        self.tensors = []
+        self.tensor_dataset = None
 
     def read(self, **kwargs):
         pass
@@ -69,7 +69,7 @@ class Dataset:
         tensors = [all_input_ids, all_input_mask, all_segment_ids, all_label_ids]
         if all_features is not None:
             tensors.append(all_features)
-        self.tensors = TensorDataset(*tensors)
+        self.tensor_dataset = TensorDataset(*tensors)
 
     def _convert_examples_to_features(self):
         """ Loads a data file into a list of `InputBatch`s

@@ -33,26 +33,26 @@ class TestDataSent(unittest.TestCase):
     def test_loads_examples(self):
         dataset = DatasetSentLevel(self.config)
         train_df = dataset.read(d.train_tsv)
-        examples = dataset.load_examples(train_df)
-        assert len(examples) == 9
+        dataset.load_examples(train_df)
+        assert len(dataset.examples) == 9
 
     def test_loads_examples_with_features(self):
         dataset = DatasetSentLevel(self.config)
         test_df = dataset.read(d.test_tsv, features_path='{}.test.tsv'.format(d.features_pref))
-        examples = dataset.load_examples(test_df)
-        assert len(examples) == 9
-        for ex in examples:
-            assert ex.features_inject['feature1'] == 0.2
-            assert ex.features_inject['feature2'] == 0.5
+        dataset.load_examples(test_df)
+        assert len(dataset.examples) == 9
+        for i in dataset.examples:
+            assert dataset.examples[i].features_inject['feature1'] == 0.2
+            assert dataset.examples[i].features_inject['feature2'] == 0.5
 
     def test_loads_and_caches_examples_with_features(self):
         dataset = DatasetSentLevel(self.config)
-        dataset = dataset.make_dataset(
+        dataset.make_dataset(
             d.train_tsv,
             features_path='{}.train.tsv'.format(d.features_pref),
         )
-        assert len(dataset.tensors) == 5
-        assert dataset.tensors[4].shape == (9, 2)
+        assert len(dataset.tensor_dataset.tensors) == 5
+        assert dataset.tensor_dataset.tensors[4].shape == (9, 2)
 
 
 if __name__ == '__main__':
