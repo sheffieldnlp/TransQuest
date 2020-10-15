@@ -19,14 +19,14 @@ class TestDataSent(unittest.TestCase):
 
     def test_reads_data(self):
         dataset = DatasetWordLevel(self.config)
-        src, tgt, labels = dataset.read(d.src_txt, d.tgt_txt, d.tags_txt)
+        src, tgt, labels, _, _ = dataset.read(d.src_txt, d.tgt_txt, d.tags_txt)
         assert len(src) == len(tgt) == len(labels)
         for src_i, tgt_i, labels_i in zip(src, tgt, labels):
             assert len(tgt_i.split()) == len(labels_i)
 
     def test_loads_examples(self):
         dataset = DatasetWordLevel(self.config)
-        src, tgt, labels = dataset.read(d.src_txt, d.tgt_txt, d.tags_txt)
+        src, tgt, labels, _, _ = dataset.read(d.src_txt, d.tgt_txt, d.tags_txt)
         examples = dataset.load_examples(src, tgt, labels)
         assert len(examples) == len(src)
 
