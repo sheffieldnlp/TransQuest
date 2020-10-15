@@ -7,6 +7,12 @@ from multiprocessing import cpu_count
 def load_config(cli_args):
     config = json.load(open(cli_args.config))
     process_count = cpu_count() - 2 if cpu_count() > 2 else 1
+    if args.output_dir is not None:
+        config.update({
+            'output_dir': os.path.join(args.output_dir, 'outputs'),
+            'cache_dir': os.path.join(args.output_dir, 'cache_dir'),
+            'best_model_dir': os.path.join(args.output_dir, 'best_model'),
+        })
     config.update({
         'process_count': process_count,
     })

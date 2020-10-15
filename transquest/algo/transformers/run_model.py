@@ -433,7 +433,7 @@ class QuestModel:
 
         return global_step, tr_loss / global_step
 
-    def eval_model(self, dataset, output_dir=None, verbose=True, silent=False):
+    def eval_model(self, dataset, output_dir=None, verbose=True, silent=False, serving=False, **kwargs):
         """
         Evaluates the model on eval_df. Saves results to output_dir.
 
@@ -455,20 +455,23 @@ class QuestModel:
 
         self._move_model_to_device()
 
+        if verbose and not serving:
+            print('Evaluation set contains {} examples'.format(len(dataset)))
         print('Evaluation set contains {} examples'.format(len(dataset)))
         start_time = time.time()
 
-        result, model_outputs = self.evaluate(dataset, output_dir, silent=silent)
-        print('Evaluation took {:.4f} seconds'.format(time.time() - start_time))
+        result, model_outputs = self.evaluate(
+            dataset, output_dir, verbose=verbose, silent=silent, serving=serving, **kwargs
+        )
 
         self.results.update(result)
 
-        if verbose:
+        if verbose and not serving:
             print(self.results)
 
         return result, model_outputs
 
-    def evaluate(self, dataset, output_dir=None, silent=False):
+    def evaluate(self, dataset, output_dir=None, serving=False, silent=False):
         """
         Evaluates the model on eval_df.
 
@@ -478,6 +481,7 @@ class QuestModel:
         device = self.device
         model = self.model
         args = self.args
+
         results = {}
 
         self._move_model_to_device()
@@ -492,7 +496,7 @@ class QuestModel:
         masks = None
         model.eval()
 
-        for batch in tqdm(eval_dataloader, disable=args["silent"] or silent):
+        for batch in tqdm(eval_dataloader, disable=args["silent"] or silent or serving):
             batch = tuple(t.to(device) for t in batch)
 
             with torch.no_grad():
@@ -540,16 +544,17 @@ class QuestModel:
             preds_flat = preds
             out_label_ids_flat = out_label_ids
 
-        result = self.compute_metrics(preds_flat, out_label_ids_flat)
-        result["eval_loss"] = eval_loss
-        results.update(result)
+        if not serving:
+            result = self.compute_metrics(preds_flat, out_label_ids_flat)
+            result["eval_loss"] = eval_loss
+            results.update(result)
 
-        if output_dir is not None:
-            os.makedirs(output_dir, exist_ok=True)
-            output_eval_file = os.path.join(output_dir, "eval_results.txt")
-            with open(output_eval_file, "w") as writer:
-                for key in sorted(result.keys()):
-                    writer.write("{} = {}\n".format(key, str(result[key])))
+            if output_dir is not None:
+                os.makedirs(output_dir, exist_ok=True)
+                output_eval_file = os.path.join(output_dir, "eval_results.txt")
+                with open(output_eval_file, "w") as writer:
+                    for key in sorted(result.keys()):
+                        writer.write("{} = {}\n".format(key, str(result[key])))
 
         return results, preds
 
@@ -563,8 +568,8 @@ class QuestModel:
 
         Returns:
             result: Dictionary containing evaluation results. (Matthews correlation coefficient, tp, tn, fp, fn)
-            wrong: List of InputExample objects corresponding to each incorrect prediction by the model
-        """  # noqa: ignore flake8"
+        """
+        # noqa: ignore flake8"
 
         assert len(preds) == len(labels)
 

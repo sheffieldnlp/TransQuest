@@ -41,6 +41,7 @@ setup(
             'tq-train=transquest.bin.train:main',
             'tq-train-multilingual=transquest.bin.train_multilingual:cli_main',
             'tq-train-word=transquest.bin.train_word_level:cli_main',
+            'tq-run-app=transquest.serving.model_server:main'
         ]
     }
 )

@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch
 import pandas as pd
@@ -278,15 +279,28 @@ class DatasetWordLevel(Dataset):
 
 class DatasetSentLevel(Dataset):
 
-    def __init__(self, config, evaluate=False, absolute_scores=False):
+    def __init__(self, config, evaluate=False, serving_mode=False, absolute_scores=False):
         super().__init__(config, evaluate=evaluate)
         self.df = None
         self.absolute_scores = absolute_scores
+        if serving_mode:
+            self.make_dataset = self.make_dataset_serving
+        else:
+            self.make_dataset = self.make_dataset_text
 
-    def make_dataset(self, data_path, features_path=None, no_cache=False, verbose=True):
+    def make_dataset_text(self, data_path, features_path=None, no_cache=False, verbose=True):
         self.read(data_path, features_path=features_path)
         self.load_examples()
         self.make_tensors()
+
+    def make_dataset_serving(self, input_list):
+        self.process_request(input_list)
+        self.load_examples()
+        self.make_tensors()
+
+    def process_request(self, input_list):
+        self.df = pd.DataFrame(input_list)
+        self.df['labels'] = np.zeros(len(self.df))
 
     def read(self, data_path, features_path=None):
         scores_name = 'mean' if self.absolute_scores else 'z_mean'
