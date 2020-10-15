@@ -14,31 +14,31 @@ test_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.join(test_dir, '../data')
 
 
-class TestDataSent(unittest.TestCase):
+class TestDataWord(unittest.TestCase):
 
     config = load_config(d.args)
 
     def test_reads_data(self):
         dataset = DatasetWordLevel(self.config)
-        src, tgt, labels, features, mt_out = dataset.read(d.src_txt, d.tgt_txt, d.tags_txt)
+        src, tgt, labels, _, _ = dataset.read(d.src_txt, d.tgt_txt, d.tags_txt, wmt_format=True)
         assert len(src) == len(tgt) == len(labels)
         for src_i, tgt_i, labels_i in zip(src, tgt, labels):
             assert len(tgt_i.split()) == len(labels_i)
 
     def test_loads_examples(self):
         dataset = DatasetWordLevel(self.config)
-        src, tgt, labels, features, mt_out = dataset.read(d.src_txt, d.tgt_txt, d.tags_txt)
+        src, tgt, labels, _, _ = dataset.read(d.src_txt, d.tgt_txt, d.tags_txt, wmt_format=True)
         dataset.load_examples(src, tgt, labels)
         assert len(dataset.examples) == len(src)
 
     def test_makes_dataset(self):
         dataset = DatasetWordLevel(self.config)
-        dataset.make_dataset(d.src_txt, d.tgt_txt, d.tags_txt)
+        dataset.make_dataset(d.src_txt, d.tgt_txt, d.tags_txt, wmt_format=True)
         print(len(dataset.tensor_dataset.tensors))
 
     def test_makes_dataset_with_features(self):
         dataset = DatasetWordLevel(self.config)
-        dataset.make_dataset(d.src_txt, d.tgt_txt, d.tags_txt, [d.features_path], d.mt_path)
+        dataset.make_dataset(d.src_txt, d.tgt_txt, d.tags_txt, [d.features_path], d.mt_path, wmt_format=True)
         assert dataset.tensor_dataset.tensors[4].shape == (5, 1, 128)
 
     def test_maps_labels_to_bpe(self):
@@ -49,10 +49,9 @@ class TestDataSent(unittest.TestCase):
         assert len(labels) == len(pieces)
 
     def test_maps_labels_to_bpe_chinese(self):
-        tokens = "2018 年 7 月 ， 法拉奇为 2018 年宾夕法尼亚州美国参议院选举的共和党候选人卢 · 巴莱塔 （ Lou Barletta ） 担任了筹款人。"
+        tokens = "Harlequin   每秒 销售   4   本书 以上   ，   其中 一半 在 国际 上 销售 。".split()
         tokenizer = XLMRobertaTokenizer.from_pretrained('xlm-roberta-base', do_lower_case=False)
-        pretrained_pieces = tokenizer.tokenize(tokens)
-        tokens = tokens.split()
+        pretrained_pieces = tokenizer.tokenize(' '.join(tokens))
         labels = [1] * len(tokens)
         result = map_pieces(tokens, pretrained_pieces, labels, 'first')
         assert len(result) == len(pretrained_pieces)

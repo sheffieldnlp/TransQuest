@@ -14,8 +14,18 @@ import numpy as np
 import pandas as pd
 import torch
 
+from scipy.stats import mode
+from scipy.stats import spearmanr
+
+
+from sklearn.metrics import (
+    matthews_corrcoef,
+    confusion_matrix,
+    label_ranking_average_precision_score,
+    accuracy_score,
+)
 from tensorboardX import SummaryWriter
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
+from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
 from tqdm.auto import trange, tqdm
 
 from transformers import AdamW, get_linear_schedule_with_warmup
@@ -32,7 +42,10 @@ except ImportError:
 
 
 class QuestModel:
-    def __init__(self, model_type, model_name, weight=None, args=None, use_cuda=True, cuda_device=-1, **kwargs):
+    def __init__(
+        self, model_type, model_name, weight=None, args=None, use_cuda=True, cuda_device=-1, **kwargs,
+    ):
+
         """
         Initializes a ClassificationModel model.
 
@@ -45,8 +58,7 @@ class QuestModel:
             use_cuda (optional): Use GPU if available. Setting to False will force model to use CPU only.
             cuda_device (optional): Specific GPU that should be used. Will use the first available GPU by default.
             **kwargs (optional): For providing proxies, force_download, resume_download, cache_dir and other options specific to the 'from_pretrained' implementation where this will be supplied.
-        """
-        # noqa: ignore flake8"
+        """  # noqa: ignore flake8"
 
         if args and 'running_seed' in args:
             print('Seed is {}'.format(args['running_seed']))
@@ -81,7 +93,8 @@ class QuestModel:
             self.model = model_class.from_pretrained(
                 model_name, config=self.config, weight=torch.Tensor(self.weight).to(self.device), **kwargs)
         else:
-            self.model = model_class.from_pretrained(model_name, config=self.config, **kwargs)
+            self.model, info = model_class.from_pretrained(model_name, config=self.config, output_loading_info=True, **kwargs)
+            print(info)
 
         self.results = {}
 
@@ -122,7 +135,7 @@ class QuestModel:
         args=None,
         eval_df=None,
         verbose=True,
-        **kwargs
+        **extra_metrics
     ):
         """
         Trains the model using 'train_df'
@@ -134,7 +147,7 @@ class QuestModel:
             show_running_loss (optional): Set to False to prevent running loss from being printed to console. Defaults to True.
             args (optional): Optional changes to the args dict of the model. Any changes made will persist for the model.
             eval_df (optional): A DataFrame against which evaluation will be performed when evaluate_during_training is enabled. Is required if evaluate_during_training is enabled.
-            **kwargs: Additional metrics that should be used. Pass in the metrics as keyword arguments (name of metric: function to use). E.g. f1=sklearn.metrics.f1_score.
+            **extra_metrics: Additional metrics that should be used. Pass in the metrics as keyword arguments (name of metric: function to use). E.g. f1=sklearn.metrics.f1_score.
                         A metric function should take in two parameters. The first parameter will be the true labels, and the second parameter will be the predictions.
 
         Returns:
@@ -172,7 +185,7 @@ class QuestModel:
             show_running_loss=show_running_loss,
             eval_df=eval_df,
             verbose=verbose,
-            **kwargs,
+            **extra_metrics,
         )
 
         model_to_save = self.model.module if hasattr(self.model, "module") else self.model
@@ -191,7 +204,7 @@ class QuestModel:
         show_running_loss=True,
         eval_df=None,
         verbose=True,
-        **kwargs,
+        **extra_metrics,
     ):
         """
         Trains the model on train_dataset.
@@ -251,7 +264,7 @@ class QuestModel:
         early_stopping_counter = 0
 
         if args["evaluate_during_training"]:
-            training_progress_scores = self._create_training_progress_scores(multi_label)
+            training_progress_scores = self._create_training_progress_scores(multi_label, **extra_metrics)
 
         if args["wandb_project"]:
             wandb.init(project=args["wandb_project"], config={**args}, **args["wandb_kwargs"])
@@ -261,6 +274,7 @@ class QuestModel:
         for _ in train_iterator:
             # epoch_iterator = tqdm(train_dataloader, desc="Iteration")
             for step, batch in enumerate(tqdm(train_dataloader, desc="Current iteration", disable=args["silent"])):
+                model.train()
                 batch = tuple(t.to(device) for t in batch)
 
                 inputs = self._get_inputs_dict(batch)
@@ -329,8 +343,10 @@ class QuestModel:
                     ):
                         # Only evaluate when single GPU otherwise metrics may not average well
                         results, _ = self.eval_model(
-                            eval_df, verbose=verbose and args["evaluate_during_training_verbose"], silent=True, **kwargs
+                            eval_df, verbose=verbose and args["evaluate_during_training_verbose"], silent=True, **extra_metrics
                         )
+                        for key, value in results.items():
+                            tb_writer.add_scalar("eval_{}".format(key), value, global_step)
 
                         output_dir_current = os.path.join(output_dir, "checkpoint-{}".format(global_step))
 
@@ -384,7 +400,7 @@ class QuestModel:
 
             if args["evaluate_during_training"]:
                 results, _ = self.eval_model(
-                    eval_df, verbose=verbose and args["evaluate_during_training_verbose"], silent=True, **kwargs
+                    eval_df, verbose=verbose and args["evaluate_during_training_verbose"], silent=True, **extra_metrics
                 )
 
                 self._save_model(output_dir_current, results=results)
@@ -422,7 +438,7 @@ class QuestModel:
 
         return global_step, tr_loss / global_step
 
-    def eval_model(self, dataset, multi_label=False, output_dir=None, verbose=True, silent=False, **kwargs):
+    def eval_model(self, dataset, output_dir=None, verbose=True, silent=False, **extra_metrics):
         """
         Evaluates the model on eval_df. Saves results to output_dir.
 
@@ -432,7 +448,7 @@ class QuestModel:
             output_dir: The directory where model files will be saved. If not given, self.args['output_dir'] will be used.
             verbose: If verbose, results will be printed to the console on completion of evaluation.
             silent: If silent, tqdm progress bars will be hidden.
-            **kwargs: Additional metrics that should be used. Pass in the metrics as keyword arguments (name of metric: function to use). E.g. f1=sklearn.metrics.f1_score.
+            **extra_metrics: Additional metrics that should be used. Pass in the metrics as keyword arguments (name of metric: function to use). E.g. f1=sklearn.metrics.f1_score.
                         A metric function should take in two parameters. The first parameter will be the true labels, and the second parameter will be the predictions.
 
         Returns:
@@ -450,7 +466,7 @@ class QuestModel:
         start_time = time.time()
 
         result, model_outputs = self.evaluate(
-            dataset, output_dir, multi_label=multi_label, verbose=verbose, silent=silent, **kwargs
+            dataset, output_dir, silent=silent, **extra_metrics
         )
 
         print('Evaluation took {:.4f} seconds'.format(time.time() - start_time))
@@ -462,7 +478,7 @@ class QuestModel:
 
         return result, model_outputs
 
-    def evaluate(self, dataset, output_dir, multi_label=False, prefix="", verbose=True, silent=False, **kwargs):
+    def evaluate(self, dataset, output_dir=None, silent=False, **extra_metrics):
         """
         Evaluates the model on eval_df.
 
@@ -472,10 +488,9 @@ class QuestModel:
         device = self.device
         model = self.model
         args = self.args
-        eval_output_dir = output_dir
-
         results = {}
-        os.makedirs(eval_output_dir, exist_ok=True)
+
+        self._move_model_to_device()
 
         eval_sampler = SequentialSampler(dataset)
         eval_dataloader = DataLoader(dataset, sampler=eval_sampler, batch_size=args["eval_batch_size"])
@@ -515,45 +530,72 @@ class QuestModel:
 
         if args['regression']:
             preds = np.squeeze(preds)
-        model_outputs = preds
 
         if not args['regression']:
             preds = np.argmax(preds, axis=-1)
-            model_outputs = preds
             if args['word_level']:
                 def _remove_padding(a, mask):
                     res = []
+                    res_flat = []
                     for i, arr in enumerate(a):
-                        res.extend(arr[np.nonzero(mask[i])].squeeze())
-                    return res
-                preds = _remove_padding(preds, masks)
-                out_label_ids = _remove_padding(out_label_ids, masks)
+                        res.append(arr[np.nonzero(mask[i])].squeeze())
+                        res_flat.extend(arr[np.nonzero(mask[i])].squeeze())
+                    return res, res_flat
+                preds, preds_flat = _remove_padding(preds, masks)
+                out_label_ids, out_label_ids_flat = _remove_padding(out_label_ids, masks)
+            else:
+                preds_flat = preds
+                out_label_ids_flat = out_label_ids
+        else:
+            preds_flat = preds
+            out_label_ids_flat = out_label_ids
 
-        result = self.compute_metrics(preds, out_label_ids)
+        result = self.compute_metrics(preds_flat, out_label_ids_flat, **extra_metrics)
         result["eval_loss"] = eval_loss
         results.update(result)
-        return results, model_outputs
 
-    def compute_metrics(self, preds, labels):
+        if output_dir is not None:
+            os.makedirs(output_dir, exist_ok=True)
+            output_eval_file = os.path.join(output_dir, "eval_results.txt")
+            with open(output_eval_file, "w") as writer:
+                for key in sorted(result.keys()):
+                    writer.write("{} = {}\n".format(key, str(result[key])))
+
+        return results, preds
+
+    def compute_metrics(self, preds, labels, **extra_metrics):
         """
         Computes the evaluation metrics for the model predictions.
 
         Args:
             preds: Model predictions
             labels: Ground truth labels
+            **extra_metrics: Additional metrics that should be used. Pass in the metrics as keyword arguments (name of metric: function to use). E.g. f1=sklearn.metrics.f1_score.
+                        A metric function should take in two parameters. The first parameter will be the true labels, and the second parameter will be the predictions.
+
         Returns:
             result: Dictionary containing evaluation results. (Matthews correlation coefficient, tp, tn, fp, fn)
-        """
-        # noqa: ignore flake8"
+            wrong: List of InputExample objects corresponding to each incorrect prediction by the model
+        """  # noqa: ignore flake8"
 
         assert len(preds) == len(labels)
 
-        results = {}
-        for metric, func in self.metrics.items():
-            results[metric] = func(labels, preds)
-        return results
+        extra_results = {}
+        for metric, func in extra_metrics.items():
+            extra_results[metric] = func(labels, preds)
 
-    def predict(self, dataset, multi_label=False):
+        if self.args['regression']:
+            return {**extra_results}
+
+        mcc = matthews_corrcoef(labels, preds)
+
+        if self.model.num_labels == 2:
+            tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
+            return {**{"mcc": mcc, "tp": tp, "tn": tn, "fp": fp, "fn": fn}, **extra_metrics}
+        else:
+            return {**{"mcc": mcc}, **extra_results}
+
+    def predict(self, dataset, return_scores=False):
         """
         Performs predictions on a list of text.
 
@@ -574,54 +616,42 @@ class QuestModel:
         eval_sampler = SequentialSampler(dataset)
         eval_dataloader = DataLoader(dataset, sampler=eval_sampler, batch_size=args["eval_batch_size"])
 
-        eval_loss = 0.0
-        nb_eval_steps = 0
         preds = None
-        out_label_ids = None
+        masks = None
+
+        model.eval()
 
         for batch in tqdm(eval_dataloader, disable=args["silent"]):
-            model.eval()
             batch = tuple(t.to(device) for t in batch)
 
             with torch.no_grad():
                 inputs = self._get_inputs_dict(batch)
                 outputs = model(**inputs)
-                tmp_eval_loss, logits = outputs[:2]
+                _, logits = outputs[:2]
 
-                if multi_label:
-                    logits = logits.sigmoid()
-
-                eval_loss += tmp_eval_loss.mean().item()
-
-            nb_eval_steps += 1
+                if args['word_level']:
+                    logits = torch.nn.functional.softmax(logits, dim=-1)
 
             if preds is None:
                 preds = logits.detach().cpu().numpy()
-                out_label_ids = inputs["labels"].detach().cpu().numpy()
+                masks = inputs["attention_mask"].detach().cpu().numpy()
             else:
                 preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
-                out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
+                masks = np.append(masks, inputs["attention_mask"].detach().cpu().numpy(), axis=0)
 
-        eval_loss = eval_loss / nb_eval_steps
-
-        if not multi_label and args["regression"] is True:
+        if args["regression"] is True:
             preds = np.squeeze(preds)
-            model_outputs = preds
         else:
-            model_outputs = preds
-            if multi_label:
-                if isinstance(args["threshold"], list):
-                    threshold_values = args["threshold"]
-                    preds = [
-                        [self._threshold(pred, threshold_values[i]) for i, pred in enumerate(example)]
-                        for example in preds
-                    ]
-                else:
-                    preds = [[self._threshold(pred, args["threshold"]) for pred in example] for example in preds]
-            else:
-                preds = np.argmax(preds, axis=1)
+            preds = preds[:, :, 1] if return_scores else np.argmax(preds, axis=-1)
+            if args['word_level']:
+                def _remove_padding(a, mask):
+                    res = []
+                    for i, arr in enumerate(a):
+                        res.append(arr[np.nonzero(mask[i])].squeeze())
+                    return res
+                preds = _remove_padding(preds, masks)
 
-        return preds, model_outputs
+        return preds
 
     def _threshold(self, x, threshold):
         if x >= threshold:
@@ -666,3 +696,9 @@ class QuestModel:
             model_to_save = model.module if hasattr(model, "module") else model
             model_to_save.save_pretrained(output_dir)
             self.tokenizer.save_pretrained(output_dir)
+
+        if results:
+            output_eval_file = os.path.join(output_dir, "eval_results.txt")
+            with open(output_eval_file, "w") as writer:
+                for key in sorted(results.keys()):
+                    writer.write("{} = {}\n".format(key, str(results[key])))
