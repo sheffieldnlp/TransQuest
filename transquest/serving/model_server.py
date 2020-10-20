@@ -50,19 +50,21 @@ class SentenceLevelServer(ModelServer):
         self.logger.info(input_json)
         output = self.predict(input_json)
         try:
-            response = self.prepare_output(output)
+            output = self.prepare_output(output)
+            response = {'predictions': output}
+            self.logger.info(response)
+            response = jsonify(response)
         except Exception:
             self.logger.exception('Exception occurred when building response!')
             raise
         return response
 
-    def prepare_output(self, output):
+    @staticmethod
+    def prepare_output(output):
         predictions = output.tolist()
         if not type(predictions) is list:
             predictions = [predictions]
-        response = {'predictions': predictions}
-        self.logger.info(response)
-        return jsonify(response)
+        return predictions
 
 
 class WordLevelServer(ModelServer):
@@ -71,7 +73,7 @@ class WordLevelServer(ModelServer):
         self.logger.info(input_json)
         output = self.predict(input_json)
         try:
-            response = output
+            response = {'predictions': output}
         except Exception:
             self.logger.exception('Exception occurred when building response!')
             raise
