@@ -33,7 +33,7 @@ class ModelServer:
         try:
             test_set = self.data_loader(self.config, evaluate=True, serving_mode=True)
             test_set.make_dataset(input_json['data'])
-            _, model_outputs = self.get_model_predictions(test_set)
+            model_outputs = self.get_model_predictions(test_set)
         except Exception:
             self.logger.exception('Exception occurred when generating predictions!')
             raise
