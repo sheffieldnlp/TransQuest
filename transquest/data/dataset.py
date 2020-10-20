@@ -199,12 +199,25 @@ class Dataset:
 
 class DatasetWordLevel(Dataset):
 
-    def __init__(self, config, evaluate=False):
+    def __init__(self, config, evaluate=False, serving_mode=False):
         super().__init__(config, evaluate=evaluate)
+        if serving_mode:
+            self.make_dataset = self.make_dataset_serving
+        else:
+            self.make_dataset = self.make_dataset_text
 
-    def make_dataset(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None, wmt_format=False):
-        src, tgt, labels, features, mt_out = self.read(src_path, tgt_path, labels_path, features_path=features_path, mt_path=mt_path, wmt_format=wmt_format)
+    def make_dataset_text(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None, wmt_format=False):
+        src, tgt, labels, features, mt_out = self.read(
+            src_path, tgt_path, labels_path, features_path=features_path, mt_path=mt_path, wmt_format=wmt_format)
         self.load_examples(src, tgt, labels, features, mt_out)
+        self.make_tensors()
+
+    def make_dataset_serving(self, input_request):
+        df = pd.DataFrame(input_request)
+        src = df['text_a']
+        tgt = df['text_b']
+        labels = [[0] * len(tgt_i.split()) for tgt_i in tgt]
+        self.load_examples(src, tgt, labels)
         self.make_tensors()
 
     def load_examples(self, src, tgt, labels, features=None, mt_out=None):
@@ -288,7 +301,7 @@ class DatasetSentLevel(Dataset):
         else:
             self.make_dataset = self.make_dataset_text
 
-    def make_dataset_text(self, data_path, features_path=None, no_cache=False, verbose=True):
+    def make_dataset_text(self, data_path, features_path=None):
         self.read(data_path, features_path=features_path)
         self.load_examples()
         self.make_tensors()
