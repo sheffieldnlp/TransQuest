@@ -33,14 +33,14 @@ class ModelServer:
         try:
             test_set = self.data_loader(self.config, evaluate=True, serving_mode=True)
             test_set.make_dataset(input_json['data'])
-            _, model_outputs = self.get_model_predictions(test_set.tensor_dataset)
+            _, model_outputs = self.get_model_predictions(test_set)
         except Exception:
             self.logger.exception('Exception occurred when generating predictions!')
             raise
         return model_outputs
 
-    def get_model_predictions(self, data):
-        _, model_outputs = self.model.eval_model(data, serving=True)
+    def get_model_predictions(self, test_set):
+        _, model_outputs = self.model.eval_model(test_set.tensor_dataset, serving=True)
         return model_outputs
 
 
@@ -77,15 +77,15 @@ class WordLevelServer(ModelServer):
             raise
         return response
 
-    def get_model_predictions(self, dataset):
-        preds = self.model.predict(dataset)
+    def get_model_predictions(self, testset):
+        preds = self.model.predict(testset.tensor_dataset)
         res = []
         for i, preds_i in enumerate(preds):
-            input_ids = dataset.tensor_dataset.tensors[0][i]
-            input_mask = dataset.tensor_dataset.tensors[1][i]
+            input_ids = testset.tensor_dataset.tensors[0][i]
+            input_mask = testset.tensor_dataset.tensors[1][i]
             preds_i = [p for j, p in enumerate(preds_i) if input_mask[j] and input_ids[j] not in (0, 2)]
-            bpe_pieces = dataset.tokenizer.tokenize(dataset.examples[i].text_a)
-            mt_tokens = dataset.examples[i].text_a.split()
+            bpe_pieces = testset.tokenizer.tokenize(testset.examples[i].text_a)
+            mt_tokens = testset.examples[i].text_a.split()
             mapped = map_pieces(bpe_pieces, mt_tokens, preds_i, 'average', from_sep='▁')
             res.append([float(v) for v in mapped])
         return res
