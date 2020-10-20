@@ -8,7 +8,7 @@ from flask import jsonify
 from transquest.serving.logger import create_logger
 from transquest.data.load_config import load_config
 from transquest.algo.transformers.run_model import QuestModel
-from transquest.data.dataset import DatasetSentLevel
+from transquest.data.dataset import DatasetSentLevel, DatasetWordLevel
 
 
 app = Flask(__name__)
@@ -16,12 +16,13 @@ app = Flask(__name__)
 
 class ModelServer:
 
-    def __init__(self, args, logger):
+    def __init__(self, args, logger, data_loader):
         self.args = args
         self.logger = logger
         self.config = load_config(args)
         self.model = None
         self.load_model()
+        self.data_loader = data_loader
 
     def load_model(self):
         use_cuda = False if self.args.cpu else torch.cuda.is_available()
@@ -29,7 +30,7 @@ class ModelServer:
 
     def predict(self, input_json):
         try:
-            test_set = DatasetSentLevel(self.config, evaluate=True, serving_mode=True)
+            test_set = self.data_loader(self.config, evaluate=True, serving_mode=True)
             test_set.make_dataset(input_json['data'])
             _, model_outputs = self.model.eval_model(test_set.tensor_dataset, serving=True)
         except Exception:
@@ -94,9 +95,9 @@ def main():
     args = parser.parse_args()
     logger = create_logger(path=args.logging)
     if args.level == 'sentence':
-        model_server = SentenceLevelServer(args, logger)
+        model_server = SentenceLevelServer(args, logger, DatasetSentLevel)
     elif args.level == 'word':
-        model_server = WordLevelServer(args, logger)
+        model_server = WordLevelServer(args, logger, DatasetWordLevel)
     else:
         logger.error('No QE model implemented for this prediction level. Available levels are word and sentence')
         raise NotImplementedError
