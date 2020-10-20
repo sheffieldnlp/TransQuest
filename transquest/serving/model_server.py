@@ -9,6 +9,7 @@ from transquest.serving.logger import create_logger
 from transquest.data.load_config import load_config
 from transquest.algo.transformers.run_model import QuestModel
 from transquest.data.dataset import DatasetSentLevel, DatasetWordLevel
+from transquest.data.mapping_tokens_bpe import map_pieces
 
 
 app = Flask(__name__)
@@ -32,10 +33,14 @@ class ModelServer:
         try:
             test_set = self.data_loader(self.config, evaluate=True, serving_mode=True)
             test_set.make_dataset(input_json['data'])
-            _, model_outputs = self.model.eval_model(test_set.tensor_dataset, serving=True)
+            _, model_outputs = self.get_model_predictions(test_set.tensor_dataset)
         except Exception:
             self.logger.exception('Exception occurred when generating predictions!')
             raise
+        return model_outputs
+
+    def get_model_predictions(self, data):
+        _, model_outputs = self.model.eval_model(data, serving=True)
         return model_outputs
 
 
@@ -66,19 +71,24 @@ class WordLevelServer(ModelServer):
         self.logger.info(input_json)
         output = self.predict(input_json)
         try:
-            response = self.prepare_output(output)
+            response = output
         except Exception:
             self.logger.exception('Exception occurred when building response!')
             raise
         return response
 
-    def prepare_output(self, output):
-        respose = []
-        for preds_i in output:
-            respose.append(preds_i.tolist())
-        response = {'predictions': respose}
-        self.logger.info(response)
-        return jsonify(response)
+    def get_model_predictions(self, dataset):
+        preds = self.model.predict(dataset)
+        res = []
+        for i, preds_i in enumerate(preds):
+            input_ids = dataset.tensor_dataset.tensors[0][i]
+            input_mask = dataset.tensor_dataset.tensors[1][i]
+            preds_i = [p for j, p in enumerate(preds_i) if input_mask[j] and input_ids[j] not in (0, 2)]
+            bpe_pieces = dataset.tokenizer.tokenize(dataset.examples[i].text_a)
+            mt_tokens = dataset.examples[i].text_a.split()
+            mapped = map_pieces(bpe_pieces, mt_tokens, preds_i, 'average', from_sep='▁')
+            res.append([float(v) for v in mapped])
+        return res
 
 
 def main():

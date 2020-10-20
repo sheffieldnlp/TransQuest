@@ -571,7 +571,7 @@ class QuestModel:
             results[metric] = func(labels, preds)
         return {**results}
 
-    def predict(self, dataset, return_scores=False):
+    def predict(self, dataset, return_scores=False, serving=False):
         """
         Performs predictions on a list of text.
 
@@ -597,7 +597,7 @@ class QuestModel:
 
         model.eval()
 
-        for batch in tqdm(eval_dataloader, disable=args["silent"]):
+        for batch in tqdm(eval_dataloader, disable=serving):
             batch = tuple(t.to(device) for t in batch)
 
             with torch.no_grad():
