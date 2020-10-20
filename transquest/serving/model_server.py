@@ -73,7 +73,7 @@ class WordLevelServer(ModelServer):
         return response
 
     def prepare_output(self, output):
-        predictions = output.tolist()
+        predictions = output
         if not type(predictions) is list:
             predictions = [predictions]
         response = {'predictions': predictions}
