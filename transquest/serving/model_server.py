@@ -73,10 +73,10 @@ class WordLevelServer(ModelServer):
         return response
 
     def prepare_output(self, output):
-        predictions = output
-        if not type(predictions) is list:
-            predictions = [predictions]
-        response = {'predictions': predictions}
+        respose = []
+        for preds_i in output:
+            respose.append(preds_i.tolist())
+        response = {'predictions': respose}
         self.logger.info(response)
         return jsonify(response)
 
