@@ -80,7 +80,7 @@ class WordLevelServer(ModelServer):
         return response
 
     def get_model_predictions(self, testset):
-        preds = self.model.predict(testset.tensor_dataset)
+        preds = self.model.predict(testset.tensor_dataset, serving=True)
         res = []
         for i, preds_i in enumerate(preds):
             input_ids = testset.tensor_dataset.tensors[0][i]
@@ -89,7 +89,7 @@ class WordLevelServer(ModelServer):
             bpe_pieces = testset.tokenizer.tokenize(testset.examples[i].text_a)
             mt_tokens = testset.examples[i].text_a.split()
             mapped = map_pieces(bpe_pieces, mt_tokens, preds_i, 'average', from_sep='▁')
-            res.append([float(v) for v in mapped])
+            res.append([int(v) for v in mapped])
         return res
 
 
