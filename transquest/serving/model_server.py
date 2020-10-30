@@ -59,9 +59,10 @@ class ModelServer(metaclass=ABCMeta):
             tokenized.append(self.target_tokenizer.tokenize(item['text_b']))
         return tokenized
 
-    @abstractmethod
     def load_data(self, input_json):
-        pass
+        test_set = self.data_loader(self.config, evaluate=True, serving_mode=True)
+        test_set.make_dataset(input_json['data'])
+        return test_set
 
     @abstractmethod
     def predict_from_model(self, test_set):
@@ -73,11 +74,6 @@ class ModelServer(metaclass=ABCMeta):
 
 
 class SentenceLevelServer(ModelServer):
-
-    def load_data(self, input_json):
-        test_set = self.data_loader(self.config, evaluate=True, serving_mode=True)
-        test_set.make_dataset(input_json['data'])
-        return test_set
 
     def predict_from_model(self, test_set):
         _, model_output = self.model.eval_model(test_set.tensor_dataset, serving=True)
@@ -97,11 +93,6 @@ class SentenceLevelServer(ModelServer):
 
 
 class WordLevelServer(ModelServer):
-
-    def load_data(self, input_json):
-        test_set = self.data_loader(self.config, evaluate=True, serving_mode=True)
-        test_set.make_dataset(input_json['data'])
-        return test_set
 
     def prepare_output(self, input_json, model_output):
         response = {'predictions': model_output, 'tokens': self.tokenize_target(input_json)}
