@@ -29,6 +29,7 @@ class ModelServer(metaclass=ABCMeta):
         self.load_model()
         self.data_loader = data_loader
         self.target_tokenizer = MosesTokenizer(lang=args.lang_pair[-2:])
+        self.source_tokenizer = MosesTokenizer(lang=args.lang_pair[:2])
 
     def load_model(self):
         use_cuda = False if self.args.cpu else torch.cuda.is_available()
@@ -53,10 +54,11 @@ class ModelServer(metaclass=ABCMeta):
             raise
         return output
 
-    def tokenize_target(self, input_json):
+    @staticmethod
+    def tokenize(input_json, text_name, tokenizer):
         tokenized = []
         for item in input_json['data']:
-            tokenized.append(self.target_tokenizer.tokenize(item['text_b']))
+            tokenized.append(tokenizer.tokenize(item[text_name]))
         return tokenized
 
     def load_data(self, input_json):
@@ -86,7 +88,11 @@ class SentenceLevelServer(ModelServer):
         result = []
         for pred in predictions:  # return list of lists to be consistent with word-level serving
             result.append([pred])
-        response = {'predictions': result, 'tokens': self.tokenize_target(input_json)}
+        response = {
+            'predictions': result,
+            'source_tokens': self.tokenize(input_json, 'text_a', self.source_tokenizer),
+            'target_tokens': self.tokenize(input_json, 'text_b', self.target_tokenizer),
+        }
         self.logger.info(response)
         response = jsonify(response)
         return response
@@ -95,7 +101,11 @@ class SentenceLevelServer(ModelServer):
 class WordLevelServer(ModelServer):
 
     def prepare_output(self, input_json, model_output):
-        response = {'predictions': model_output, 'tokens': self.tokenize_target(input_json)}
+        response = {
+            'predictions': model_output,
+            'source_tokens': self.tokenize(input_json, 'text_a', self.source_tokenizer),
+            'target_tokens': self.tokenize(input_json, 'text_b', self.target_tokenizer),
+        }
         return jsonify(response)
 
     def predict_from_model(self, test_set):
