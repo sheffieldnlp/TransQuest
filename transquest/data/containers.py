@@ -26,18 +26,19 @@ class InputExample:
 
 
 class InputExampleSent(InputExample):  # TODO: use this for sentence-level
-
     def __init__(self, guid, text_a, text_b=None, label=None):
         super(InputExampleSent, self).__init__(guid, text_a, text_b=text_b, label=label)
         assert type(self.label) is float or type(self.label) is int
 
 
 class InputExampleWord(InputExample):
-    def __init__(self, guid, text_a, text_b=None, label=None, mt_tokens=None):
-        super(InputExampleWord, self).__init__(guid, text_a, text_b=text_b, label=label)
-        assert type(self.label) is list
+    def __init__(self, guid, text_a, text_b=None, labels_a=None, labels_b=None, mt_tokens=None):
+        super(InputExampleWord, self).__init__(guid, text_a, text_b=text_b)
+        assert type(labels_a) is list
+        assert type(labels_b) is list
+        self.labels_a = labels_a
+        self.labels_b = labels_b
         self.mt_tokens = mt_tokens
-        self.text_b = None
 
 
 class InputFeatures(object):

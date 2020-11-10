@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import torch
 import pandas as pd
@@ -15,32 +14,35 @@ from transquest.data.containers import InputExampleSent
 from transquest.data.containers import InputExampleWord
 from transquest.data.containers import InputFeatures
 from transquest.data.mapping_tokens_bpe import map_pieces
+from transquest.data.util import read_lines
 
 from transquest.algo.model_classes import model_classes
 
-DEFAULT_FEATURE_NAME = 'feature'
+
+DEFAULT_FEATURE_NAME = "feature"
 
 
 class Dataset:
-
     def __init__(self, config, evaluate=False):
         self.config = config
-        self.max_seq_length = config['max_seq_length']
-        self.output_mode = 'regression' if config['regression'] else 'classification'
-        self.cls_token_at_end = bool(config['model_type'] in ['xlnet'])
-        self.pad_on_left = bool(config['model_type'] in ['xlnet'])
-        self.cls_token_segment_id = 2 if config['model_type'] in ['xlnet'] else 0
-        self.pad_token_segment_id = 4 if config['model_type'] in ['xlnet'] else 0
+        self.max_seq_length = config["max_seq_length"]
+        self.output_mode = "regression" if config["regression"] else "classification"
+        self.cls_token_at_end = bool(config["model_type"] in ["xlnet"])
+        self.pad_on_left = bool(config["model_type"] in ["xlnet"])
+        self.cls_token_segment_id = 2 if config["model_type"] in ["xlnet"] else 0
+        self.pad_token_segment_id = 4 if config["model_type"] in ["xlnet"] else 0
         self.process_count = cpu_count() - 2
-        self.silent = config['silent']
-        self.use_multiprocessing = config['use_multiprocessing']
+        self.silent = config["silent"]
+        self.use_multiprocessing = config["use_multiprocessing"]
         self.mask_padding_with_zero = True
         self.flatten = False
         self.stride = None
         self.evaluate = evaluate
 
-        _, _, tokenizer_class = model_classes[config['model_type']]
-        self.tokenizer = tokenizer_class.from_pretrained(config['model_name'], do_lower_case=self.config['do_lower_case'])
+        _, _, tokenizer_class = model_classes[config["model_type"]]
+        self.tokenizer = tokenizer_class.from_pretrained(
+            config["model_name"], do_lower_case=self.config["do_lower_case"]
+        )
         self.cls_token = self.tokenizer.cls_token
         self.sep_token = self.tokenizer.sep_token
         self.sep_token_extra = False
@@ -64,7 +66,7 @@ class Dataset:
         if features[0].features_inject:
             all_features = self._injected_features_to_tensor(features=features, max_len=self.max_seq_length)
 
-        label_torch_type = torch.long if self.output_mode == 'classification' else torch.float
+        label_torch_type = torch.long if self.output_mode == "classification" else torch.float
         all_label_ids = torch.tensor([f.label_id for f in features], dtype=label_torch_type)
 
         tensors = [all_input_ids, all_input_mask, all_segment_ids, all_label_ids]
@@ -73,21 +75,34 @@ class Dataset:
         self.tensor_dataset = TensorDataset(*tensors)
 
     def _convert_examples_to_features(self):
-        """ Loads a data file into a list of `InputBatch`s
-            `cls_token_at_end` define the location of the CLS token:
-                - False (Default, BERT/XLM pattern): [CLS] + A + [SEP] + B + [SEP]
-                - True (XLNet/GPT pattern): A + [SEP] + B + [SEP] + [CLS]
-            `cls_token_segment_id` define the segment id associated to the CLS token (0 for BERT, 2 for XLNet)
+        """Loads a data file into a list of `InputBatch`s
+        `cls_token_at_end` define the location of the CLS token:
+            - False (Default, BERT/XLM pattern): [CLS] + A + [SEP] + B + [SEP]
+            - True (XLNet/GPT pattern): A + [SEP] + B + [SEP] + [CLS]
+        `cls_token_segment_id` define the segment id associated to the CLS token (0 for BERT, 2 for XLNet)
         """
         if self.use_multiprocessing:
             with Pool(self.process_count) as p:
-                features = list(tqdm(p.imap(self._convert_example_to_feature, range(len(self.examples)), chunksize=500), total=len(self.examples),
-                                     disable=self.silent))
+                features = list(
+                    tqdm(
+                        p.imap(self._convert_example_to_feature, range(len(self.examples)), chunksize=500),
+                        total=len(self.examples),
+                        disable=self.silent,
+                    )
+                )
         else:
-            features = [self._convert_example_to_feature(idx) for idx in tqdm(range(len(self.examples)), disable=self.silent)]
+            features = [
+                self._convert_example_to_feature(idx) for idx in tqdm(range(len(self.examples)), disable=self.silent)
+            ]
         return features
 
-    def _convert_example_to_feature(self, idx, pad_token=0, sequence_a_segment_id=0, sequence_b_segment_id=1,):
+    def _convert_example_to_feature(
+        self,
+        idx,
+        pad_token=0,
+        sequence_a_segment_id=0,
+        sequence_b_segment_id=1,
+    ):
 
         tokens_a = self.tokenizer.tokenize(self.examples[idx].text_a)
         tokens_b = None
@@ -102,7 +117,7 @@ class Dataset:
             # Account for [CLS] and [SEP] with "- 2" and with "- 3" for RoBERTa.
             special_tokens_count = 3 if self.sep_token_extra else 2
             if len(tokens_a) > self.max_seq_length - special_tokens_count:
-                tokens_a = tokens_a[:(self.max_seq_length - special_tokens_count)]
+                tokens_a = tokens_a[: (self.max_seq_length - special_tokens_count)]
 
         # The convention in BERT is:
         # (a) For sequence pairs:
@@ -149,8 +164,15 @@ class Dataset:
         input_mask = self._pad(input_mask, [0 if self.mask_padding_with_zero else 1] * padding_length)
         segment_ids = self._pad(segment_ids, [self.pad_token_segment_id] * padding_length)
 
-        label = self._map_labels(example=self.examples[idx], bpe_tokens=tokens_a, padding=([pad_token] * padding_length))
-        features_inject = self._map_features(example=self.examples[idx], bpe_tokens=tokens_a, padding=([pad_token] * padding_length))
+        label = self._map_labels(
+            example=self.examples[idx],
+            bpe_tokens_a=tokens_a,
+            bpe_tokens_b=tokens_b,
+            padding=([pad_token] * padding_length),
+        )
+        features_inject = self._map_features(
+            example=self.examples[idx], bpe_tokens=tokens_a, padding=([pad_token] * padding_length)
+        )
 
         assert len(input_ids) == self.max_seq_length
         assert len(input_mask) == self.max_seq_length
@@ -198,7 +220,6 @@ class Dataset:
 
 
 class DatasetWordLevel(Dataset):
-
     def __init__(self, config, evaluate=False, serving_mode=False):
         super().__init__(config, evaluate=evaluate)
         if serving_mode:
@@ -206,76 +227,106 @@ class DatasetWordLevel(Dataset):
         else:
             self.make_dataset = self.make_dataset_text
 
-    def make_dataset_text(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None, wmt_format=False):
-        src, tgt, labels, features, mt_out = self.read(
-            src_path, tgt_path, labels_path, features_path=features_path, mt_path=mt_path, wmt_format=wmt_format)
-        self.load_examples(src, tgt, labels, features, mt_out)
+    def make_dataset_text(
+        self,
+        src_path,
+        src_tags_path,
+        mt_path,
+        mt_tags_path,
+        mt_features_path=None,
+        mt_raw_path=None,
+        wmt_format=False,
+        with_gaps=False,
+    ):
+        src, src_tags, mt, mt_tags, mt_features, mt_raw = self.read(
+            src_path,
+            src_tags_path,
+            mt_path,
+            mt_tags_path,
+            mt_features_path=mt_features_path,
+            mt_raw_path=mt_raw_path,
+            wmt_format=wmt_format,
+            with_gaps=with_gaps,
+        )
+        self.load_examples(src, src_tags, mt, mt_tags, mt_features, mt_raw)
         self.make_tensors()
 
     def make_dataset_serving(self, input_request):
         df = pd.DataFrame(input_request)
-        src = df['text_a']
-        tgt = df['text_b']
+        src = df["text_a"]
+        tgt = df["text_b"]
         labels = [[0] * len(tgt_i.split()) for tgt_i in tgt]
         self.load_examples(src, tgt, labels)
         self.make_tensors()
 
-    def load_examples(self, src, tgt, labels, features=None, mt_out=None):
-        for i, (text_a, text_b, label) in enumerate(
-                zip(src, tgt, labels)
-        ):
-            self.examples[i] = InputExampleWord(guid=i, text_a=text_b, label=label)
-        if features is not None:
-            for feature_name in features:
+    def load_examples(self, src, src_tags, mt, mt_tags, mt_features=None, mt_raw=None):
+        for i, (text_a, text_b, labels_a, labels_b) in enumerate(zip(src, mt, src_tags, mt_tags)):
+            self.examples[i] = InputExampleWord(
+                guid=i, text_a=text_a, text_b=text_b, labels_a=labels_a, labels_b=labels_b
+            )
+        if mt_features:
+            for feature_name in mt_features:
                 for i in self.examples:
-                    self.examples[i].features_inject[feature_name] = features[feature_name][i]
-                    self.examples[i].mt_tokens = mt_out[i]
+                    self.examples[i].features_inject[feature_name] = mt_features[feature_name][i]
+                    self.examples[i].mt_tokens = mt_raw[i]
 
-    def read(self, src_path, tgt_path, labels_path, features_path=None, mt_path=None, wmt_format=False):
-        labels = self._read_labels(labels_path, wmt_format=wmt_format)
-        src = [l.strip() for l in open(src_path)]
-        tgt = [l.strip() for l in open(tgt_path)]
-        mt_out = None
-        if mt_path is not None:
-            mt_out = [l.strip().split() for l in open(mt_path)]
-        features = dict()
-        if features_path is not None:
-            for i, path in enumerate(features_path, start=1):
-                features['{}{}'.format(DEFAULT_FEATURE_NAME, i)] = [[float(s) for s in l.split()[:-1]] for l in open(path)]
-        return src, tgt, labels, features, mt_out
+    def read(
+        self,
+        src_path,
+        src_tags_path,
+        mt_path,
+        mt_tags_path,
+        mt_features_path=None,
+        mt_raw_path=None,
+        wmt_format=False,
+        with_gaps=False,
+    ):
+        src = read_lines(src_path)
+        mt = read_lines(mt_path)
+        src_tags, mt_tags = self._read_labels(src_tags_path, mt_tags_path, wmt_format=wmt_format, with_gaps=with_gaps)
+        mt_raw = read_lines(mt_raw_path) if mt_raw_path else None
+        mt_features = dict()
+        if mt_features_path:
+            for i, path in enumerate(mt_features_path, start=1):
+                with open(path) as f:
+                    mt_features[f"{DEFAULT_FEATURE_NAME}{i}"] = [[float(s) for s in line.split()[:-1]] for line in f]
+        return src, src_tags, mt, mt_tags, mt_features, mt_raw
 
     @staticmethod
-    def _read_wmt_format(path):
+    def _read_wmt_format(path, with_gaps=False):
         labels = []
         for line in open(path):
             tags = line.strip().split()
-            tags = [1 if t == 'OK' else 0 for t in tags]
-            labels_i = [t for i, t in enumerate(tags) if i % 2 != 0]
-            assert len(labels_i) * 2 + 1 == len(tags)
-            labels.append(labels_i)
+            tags = [1 if t == "OK" else 0 for t in tags]
+            if with_gaps:
+                labels.append(tags)
+            else:
+                labels_i = [t for i, t in enumerate(tags) if i % 2 != 0]
+                assert len(labels_i) * 2 + 1 == len(tags)
+                labels.append(labels_i)
         return labels
 
-    def _read_labels(self, path, wmt_format=False):
+    def _read_labels(self, src_path, mt_path, wmt_format=False, with_gaps=False):
         if wmt_format:
-            return self._read_wmt_format(path)
+            return self._read_wmt_format(src_path, with_gaps=True), self._read_wmt_format(mt_path, with_gaps)
         else:
             out = []
-            for line in open(path):
+            for line in open(mt_path):
                 out.append([int(v) for v in line.split()])
             return out
 
-    def _map_labels(self, example, bpe_tokens, padding):
-        labelled_tokens = example.text_a.split()
-        labels = example.label
-        labels = map_pieces(labelled_tokens, bpe_tokens, labels, method='first')
-        labels = labels + [0]  # sep token
+    def _map_labels(self, example, bpe_tokens_a, bpe_tokens_b, padding):
+        labels_a = map_pieces(example.text_a.split(), bpe_tokens_a, example.labels_a, method="first")
+        labels_b = map_pieces(example.text_b.split(), bpe_tokens_b, example.labels_b, method="first")
+        labels = labels_a + [0] + labels_b + [0]  # sep token
         return self._pad(labels + [0] if self.cls_token_at_end else [0] + labels, padding)
 
     def _map_features(self, example, bpe_tokens, padding):
         mapped = OrderedDict()
         for feature in example.features_inject:
             mapped_f = map_pieces(
-                example.mt_tokens, bpe_tokens, example.features_inject[feature], method='average', from_sep='@@')
+                example.mt_tokens, bpe_tokens, example.features_inject[feature], method="average", from_sep="@@"
+            )
             mapped_f = mapped_f + [0]
             mapped[feature] = self._pad(mapped_f + [0] if self.cls_token_at_end else [0] + mapped_f, padding)
         return mapped
@@ -291,7 +342,6 @@ class DatasetWordLevel(Dataset):
 
 
 class DatasetSentLevel(Dataset):
-
     def __init__(self, config, evaluate=False, serving_mode=False, absolute_scores=False):
         super().__init__(config, evaluate=evaluate)
         self.df = None
@@ -313,30 +363,28 @@ class DatasetSentLevel(Dataset):
 
     def process_request(self, input_list):
         self.df = pd.DataFrame(input_list)
-        self.df['labels'] = np.zeros(len(self.df))
+        self.df["labels"] = np.zeros(len(self.df))
 
     def read(self, data_path, features_path=None):
-        scores_name = 'mean' if self.absolute_scores else 'z_mean'
-        select_columns = ['original', 'translation', scores_name]
-        data = pd.read_csv(data_path, sep='\t', quoting=3)
+        scores_name = "mean" if self.absolute_scores else "z_mean"
+        select_columns = ["original", "translation", scores_name]
+        data = pd.read_csv(data_path, sep="\t", quoting=3)
         data = data[select_columns]
-        data = data.rename(columns={'original': 'text_a', 'translation': 'text_b', scores_name: 'labels'})
-        if self.output_mode == 'regression':
-            data = fit(data, 'labels')
+        data = data.rename(columns={"original": "text_a", "translation": "text_b", scores_name: "labels"})
+        if self.output_mode == "regression":
+            data = fit(data, "labels")
         if features_path is not None:
-            features = pd.read_csv(features_path, sep='\t', header=None)
+            features = pd.read_csv(features_path, sep="\t", header=None)
             num_features = len(features.columns)
-            features.columns = ['{}{}'.format(DEFAULT_FEATURE_NAME, i) for i in range(1, num_features + 1)]
+            features.columns = ["{}{}".format(DEFAULT_FEATURE_NAME, i) for i in range(1, num_features + 1)]
             assert len(features) == len(data)
             for column in features.columns:
                 data[column] = features[column]
         self.df = data
 
     def load_examples(self):
-        assert 'text_a' in self.df.columns and 'text_b' in self.df.columns
-        for i, (text_a, text_b, label) in enumerate(
-                zip(self.df["text_a"], self.df["text_b"], self.df["labels"])
-        ):
+        assert "text_a" in self.df.columns and "text_b" in self.df.columns
+        for i, (text_a, text_b, label) in enumerate(zip(self.df["text_a"], self.df["text_b"], self.df["labels"])):
             self.examples[i] = InputExampleSent(i, text_a, text_b, label)
         if "{}1".format(DEFAULT_FEATURE_NAME) in self.df.columns:
             for col in self.df.columns:
