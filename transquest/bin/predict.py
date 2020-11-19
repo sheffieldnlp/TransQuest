@@ -15,7 +15,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', '--test_file')
     parser.add_argument('-m', '--model_dir')
-    parser.add_argument('-o', '--output_dir')
+    parser.add_argument('-o', '--results_dir')
     parser.add_argument('-c', '--config')
     parser.add_argument('--cpu', action='store_true', required=False, default=False)
     parser.add_argument('--features_path', default=None, required=False)
@@ -31,9 +31,9 @@ def main():
     test_set.df = un_fit(test_set.df, 'labels')
     test_set.df = un_fit(test_set.df, 'predictions')
 
-    out_preds = os.path.join(args.output_dir, 'predictions')
+    out_preds = os.path.join(args.results_dir, 'predictions')
     out_preds = '{}.{}.{}'.format(out_preds, config['model_type'], config['model_name'])
-    out_scatter = os.path.join(args.output_dir, 'scatter')
+    out_scatter = os.path.join(args.results_dir, 'scatter')
     out_scatter = '{}.{}.{}'.format(out_scatter, config['model_type'], config['model_name'])
     test_set.df.to_csv('{}.tsv'.format(out_preds), header=True, sep='\t', index=False, encoding='utf-8')
     draw_scatterplot(
