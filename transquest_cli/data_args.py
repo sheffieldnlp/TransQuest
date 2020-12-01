@@ -8,6 +8,7 @@ class DataTrainingArguments:
     Arguments pertaining to what data we are going to input our model for training and eval.
     """
 
+    task_name: Optional[str] = field(default="qe", metadata={"help": "The name of the task."})
     dataset_name: Optional[str] = field(default=None, metadata={"help": "The name of the dataset to use."})
     data_dir: str = field(
         default=None, metadata={"help": "The folder with the training, validation and test data for a language pair."},
@@ -31,3 +32,16 @@ class DataTrainingArguments:
             "one (in which case the other tokens will have a padding index)."
         },
     )
+
+    def __post_init__(self):
+        # if self.dataset_name is None and self.train_file is None and self.validation_file is None:
+        #     raise ValueError("Need either a dataset name or a training/validation file.")
+        # else:
+        #     if self.train_file is not None:
+        #         extension = self.train_file.split(".")[-1]
+        #         assert extension in ["csv", "json"], "`train_file` should be a csv or a json file."
+        #     if self.validation_file is not None:
+        #         extension = self.validation_file.split(".")[-1]
+        #         assert extension in ["csv", "json"], "`validation_file` should be a csv or a json file."
+        self.task_name = self.task_name.lower()
+

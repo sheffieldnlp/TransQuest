@@ -12,7 +12,7 @@ setup(
     description="Transformer based translation quality estimation",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/TharinduDR/TransQuest",
+    url="https://github.com/sheffieldnlp/TransQuest",
     packages=find_packages(),
     classifiers=[
         "Intended Audience :: Science/Research",
@@ -21,27 +21,6 @@ setup(
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
     python_requires=">=3.6",
-    install_requires=[
-        "numpy",
-        "requests",
-        "tqdm",
-        "regex",
-        "transformers",
-        "scipy",
-        "scikit-learn",
-        "tensorboardx",
-        "pandas",
-        "tokenizers",
-        "wandb"
-    ],
-    entry_points={
-        "console_scripts": [
-            'tq-predict=transquest.bin.predict:main',
-            'tq-predict-word=transquest.bin.predict_word_level:main',
-            'tq-train=transquest.bin.train:main',
-            'tq-train-multilingual=transquest.bin.train_multilingual:cli_main',
-            'tq-train-word=transquest.bin.train_word_level:cli_main',
-            'tq-run-app=transquest.serving.model_server:main'
-        ]
-    }
+    install_requires=["numpy", "tqdm", "transformers", "scipy", "scikit-learn", "pandas", "tokenizers", "datasets",],
+    entry_points={"console_scripts": ["tq-run-word=transquest_cli.run_wordlevel:main",]},
 )

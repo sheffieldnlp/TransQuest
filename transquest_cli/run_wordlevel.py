@@ -40,6 +40,7 @@ from transformers.trainer_utils import is_main_process
 from transquest.evaluation.wordlevel import compute_scores
 from transquest_cli.model_args import ModelArguments
 from transquest_cli.data_args import DataTrainingArguments
+from transquest_cli.utils import DATASETS_LOADERS_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +122,7 @@ def tokenize_and_align_labels(examples, tokenizer, padding, label_to_id, label_a
         for input_id, offset in zip(input_ids, offset_mapping):
             # We set the label for the first token of each word. Special characters will have an offset of (0, 0)
             # so the test ignores them.
+            # TODO: Very specific to XLM-Roberta tokenization. How to generalise?
             if offset[0] == 0 and offset[1] != 0 and tokenizer.convert_ids_to_tokens(input_id) != "▁":
                 current_label = label_to_id[label[label_index]]
                 label_index += 1
@@ -137,12 +139,50 @@ def tokenize_and_align_labels(examples, tokenizer, padding, label_to_id, label_a
     return tokenized_inputs
 
 
+def predict_and_save_output(
+    trainer, tokenized_eval_dataset, label_list, output_eval_results_file, output_eval_predictions_file
+):
+    raw_predictions, raw_labels, _ = trainer.predict(tokenized_eval_dataset)
+    raw_predictions = np.argmax(raw_predictions, axis=2)
+
+    preds_src, preds_mt = get_true_predictions(
+        raw_predictions, raw_labels, tokenized_eval_dataset["length_source"], label_list=label_list
+    )
+
+    f1_bad_src, f1_good_src, mcc_src = compute_scores(
+        [[label_list[tag] for tag in tags] for tags in tokenized_eval_dataset["src_tags"]], preds_src
+    )
+    f1_bad_tgt, f1_good_tgt, mcc_tgt = compute_scores(
+        [[label_list[tag] for tag in tags] for tags in tokenized_eval_dataset["mt_tags"]], preds_mt
+    )
+
+    metrics = {
+        "src_f1-bad": f1_bad_src,
+        "src_f1-good": f1_good_src,
+        "src_mcc": mcc_src,
+        "mt_f1-bad": f1_bad_tgt,
+        "mt_f1-good": f1_good_tgt,
+        "mt_mcc": mcc_tgt,
+    }
+
+    if trainer.is_world_process_zero():
+        with open(output_eval_results_file, "w") as writer:
+            for key, value in metrics.items():
+                logger.info(f"  {key} = {value}")
+                writer.write(f"{key} = {value}\n")
+
+        # Save predictions
+        with open(output_eval_predictions_file, "w") as writer:
+            for prediction in preds_src:
+                writer.write(" ".join(prediction) + "\n")
+
+
 def main(model_args, data_args, training_args):
     # Set seed before initializing model
     set_seed(training_args.seed)
 
     # Load the dataset
-    datasets = load_dataset("transquest/datasets/wmt2020qe_hter.py", data_dir=data_args.data_dir)
+    datasets = load_dataset(f"{DATASETS_LOADERS_DIR}/wmt20qe_hter", data_dir=data_args.data_dir)
 
     features = datasets["train"].features
 
@@ -184,10 +224,12 @@ def main(model_args, data_args, training_args):
 
     tokenized_datasets = datasets.map(
         tokenize_and_align_labels,
-        tokenizer=tokenizer,
-        padding=padding,
-        label_to_id=label_to_id,
-        label_all_tokens=data_args.label_all_tokens,
+        fn_kwargs={
+            "tokenizer": tokenizer,
+            "padding": padding,
+            "label_to_id": label_to_id,
+            "label_all_tokens": data_args.label_all_tokens,
+        },
         batched=True,
         num_proc=data_args.preprocessing_num_workers,
         load_from_cache_file=not data_args.overwrite_cache,
@@ -196,7 +238,7 @@ def main(model_args, data_args, training_args):
     # Data collator
     data_collator = DataCollatorForTokenClassification(tokenizer)
 
-    # Initialize our Trainer
+    # Initialize Trainer
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -216,50 +258,25 @@ def main(model_args, data_args, training_args):
     # Evaluation
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
-        tokenized_eval_dataset = tokenized_datasets["validation"]
-        output_eval_results_file = os.path.join(training_args.output_dir, "dev_results_qe_wordlevel.txt")
-        output_eval_predictions_file = os.path.join(training_args.output_dir, "dev_predictions_qe_wordlevel.txt")
-    elif training_args.do_predict:
+        predict_and_save_output(
+            trainer,
+            tokenized_eval_dataset=tokenized_datasets["validation"],
+            label_list=label_list,
+            output_eval_results_file=os.path.join(training_args.output_dir, "valid_results.txt"),
+            output_eval_predictions_file=os.path.join(training_args.output_dir, "valid_predictions.txt"),
+        )
+
+    if training_args.do_predict:
         logger.info("*** Predict ***")
-        tokenized_eval_dataset = tokenized_datasets["test"]
-        output_eval_results_file = os.path.join(training_args.output_dir, "test_results_qe_wordlevel.txt")
-        output_eval_predictions_file = os.path.join(training_args.output_dir, "test_predictions_qe_wordlevel.txt")
+        predict_and_save_output(
+            trainer,
+            tokenized_eval_dataset=tokenized_datasets["test"],
+            label_list=label_list,
+            output_eval_results_file=os.path.join(training_args.output_dir, "test_results.txt"),
+            output_eval_predictions_file=os.path.join(training_args.output_dir, "test_predictions.txt"),
+        )
 
-    raw_predictions, raw_labels, _ = trainer.predict(tokenized_eval_dataset)
-    raw_predictions = np.argmax(raw_predictions, axis=2)
-
-    preds_src, preds_mt = get_true_predictions(
-        raw_predictions, raw_labels, tokenized_eval_dataset["length_source"], label_list=label_list
-    )
-
-    f1_bad_src, f1_good_src, mcc_src = compute_scores(
-        [[label_list[tag] for tag in tags] for tags in tokenized_eval_dataset["src_tags"]], preds_src
-    )
-    f1_bad_tgt, f1_good_tgt, mcc_tgt = compute_scores(
-        [[label_list[tag] for tag in tags] for tags in tokenized_eval_dataset["mt_tags"]], preds_mt
-    )
-
-    metrics = {
-        "src_f1-bad": f1_bad_src,
-        "src_f1-good": f1_good_src,
-        "src_mcc": mcc_src,
-        "mt_f1-bad": f1_bad_tgt,
-        "mt_f1-good": f1_good_tgt,
-        "mt_mcc": mcc_tgt,
-    }
-
-    if trainer.is_world_process_zero():
-        with open(output_eval_results_file, "w") as writer:
-            for key, value in metrics.items():
-                logger.info(f"  {key} = {value}")
-                writer.write(f"{key} = {value}\n")
-
-        # Save predictions
-        with open(output_eval_predictions_file, "w") as writer:
-            for prediction in preds_src:
-                writer.write(" ".join(prediction) + "\n")
-
-    return metrics
+    return
 
 
 def cli_main():

@@ -5,6 +5,7 @@
 .idea
 .ipynb_checkpoints
 .vscode
+*.egg-info
 
 
 .idea/**/workspace.xml
