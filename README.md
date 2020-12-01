@@ -29,7 +29,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python3 "${transquest_dir}/transquest_cli/run_wordl
     --model_name_or_path "xlm-roberta-base" \
     --dataset_name "wmt20qe_hter" \
     --data_dir "${data_dir}" \
-    --output_dir "${output_dir}"/ \
+    --output_dir "${output_dir}" \
     --do_train --num_train_epochs 5 \
     --do_eval \
     --overwrite_output_dir
