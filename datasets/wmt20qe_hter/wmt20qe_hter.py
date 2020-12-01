@@ -42,8 +42,6 @@ _DESCRIPTION = """\
 For details see http://www.statmt.org/wmt20/quality-estimation-task.html
 """
 
-_DATA_FOLDER = "/data/falva/wmt2020_qe/en-de/"
-
 
 class WMT2020QEConfig(datasets.BuilderConfig):
     """BuilderConfig for WMT2020QE"""
@@ -87,7 +85,7 @@ class WMT2020QE(datasets.GeneratorBasedBuilder):
         """Returns SplitGenerators."""
         if not self.config.data_dir:
             raise ValueError(f"Must specify the folder where the files are, but got data_dir={self.config.data_files}")
-        data_dir = self.config.data.data_dir
+        data_dir = self.config.data_dir
         return [
             datasets.SplitGenerator(
                 name=datasets.Split.TRAIN,
