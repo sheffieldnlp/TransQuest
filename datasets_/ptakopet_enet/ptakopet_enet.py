@@ -40,7 +40,7 @@ class PtakopetEnEt(datasets.GeneratorBasedBuilder):
 
     BUILDER_CONFIGS = [
         PtakopetEnEtConfig(
-            name="wmt2020qe", version=datasets.Version("1.0.0"), description="WMT2020 Quality Estimation dataset"
+            name="ptakopet_enet", version=datasets.Version("1.0.0")
         ),
     ]
 
@@ -50,7 +50,7 @@ class PtakopetEnEt(datasets.GeneratorBasedBuilder):
                 {
                     "src": datasets.Sequence(datasets.Value("string")),
                     "mt": datasets.Sequence(datasets.Value("string")),
-                    "mt_tags": datasets.Sequence(datasets.features.ClassLabel.str2int()),
+                    "mt_tags": datasets.Sequence(datasets.features.ClassLabel()),
                 }
             ),
             supervised_keys=None,
