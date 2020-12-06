@@ -76,7 +76,7 @@ class PtakopetEnEt(datasets.GeneratorBasedBuilder):
         logging.info("Generating examples")
         with open(src_path, encoding="utf-8") as src_file, open(mt_path, encoding="utf-8") as mt_file, \
                 open(mt_tags_path, encoding="utf-8") as mt_tags_file:
-            for id, (src, mt, src_tags, mt_tags, hter) in enumerate(
+            for id, (src, mt, mt_tags) in enumerate(
                 zip(src_file, mt_file, mt_tags_file,)
             ):
                 yield id, {
