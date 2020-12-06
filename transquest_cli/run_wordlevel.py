@@ -182,7 +182,7 @@ def main(model_args, data_args, training_args):
     set_seed(training_args.seed)
 
     # Load the dataset
-    datasets = load_dataset(f"{DATASETS_LOADERS_DIR}/wmt20qe_hter", data_dir=data_args.data_dir)
+    datasets = load_dataset(f"{DATASETS_LOADERS_DIR}/{data_args.dataset_name}", data_dir=data_args.data_dir)
 
     features = datasets["train"].features
 
