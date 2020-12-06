@@ -98,7 +98,7 @@ def get_true_predictions(raw_predictions, raw_labels, true_length_src, label_lis
 
 
 # Tokenize all texts and align the labels with them.
-def tokenize_and_align_labels(examples, tokenizer, padding, label_to_id, label_all_tokens):
+def tokenize_and_align_labels(examples, tokenizer, padding, label_to_id, label_all_tokens, gaps=False):
     tokenized_inputs = tokenizer(
         text=examples["src"],
         text_pair=examples["mt"],
@@ -119,7 +119,8 @@ def tokenize_and_align_labels(examples, tokenizer, padding, label_to_id, label_a
         examples["src_tags"], examples["mt_tags"], input_ids_all, offset_mappings
     ):
         # remove the labels for GAPS in mt
-        label_mt = [l for i, l in enumerate(label_mt) if i % 2 != 0]
+        if gaps:
+            label_mt = [l for i, l in enumerate(label_mt) if i % 2 != 0]
         label = label_src + label_mt
         label_index = 0
         current_label = -100
