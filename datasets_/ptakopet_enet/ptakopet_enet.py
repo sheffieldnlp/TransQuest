@@ -51,6 +51,7 @@ class PtakopetEnEt(datasets.GeneratorBasedBuilder):
                     "src": datasets.Sequence(datasets.Value("string")),
                     "mt": datasets.Sequence(datasets.Value("string")),
                     "mt_tags": datasets.Sequence(datasets.features.ClassLabel(num_classes=2)),
+                    "src_tags": datasets.Sequence(datasets.features.ClassLabel(num_classes=2)),
                 }
             ),
             supervised_keys=None,
