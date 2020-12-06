@@ -108,9 +108,6 @@ def tokenize_and_align_labels(examples, tokenizer, padding, label_to_id, label_a
         is_split_into_words=True,
         return_offsets_mapping=True,
     )
-    if "src_tags" not in examples:
-        # create dummy source tags
-        examples["src_tags"] = deepcopy(examples["mt_tags"])
     tokenized_inputs["length_source"] = [len(label_src) for label_src in examples["src_tags"]]
     offset_mappings = tokenized_inputs.pop("offset_mapping")
     input_ids_all = tokenized_inputs["input_ids"]

@@ -83,4 +83,5 @@ class PtakopetEnEt(datasets.GeneratorBasedBuilder):
                     "src": src.strip().split(),
                     "mt": mt.strip().split(),
                     "mt_tags": mt_tags.strip().split(),
+                    "src_tags": [0] * len(src.strip().split()),  # create dummy source tags
                 }
