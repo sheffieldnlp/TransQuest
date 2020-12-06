@@ -184,14 +184,15 @@ def main(model_args, data_args, training_args):
     # Load the dataset
     datasets = load_dataset(f"{DATASETS_LOADERS_DIR}/{data_args.dataset_name}", data_dir=data_args.data_dir)
 
-    features = datasets["train"].features
+    default_split_name = "train" if training_args.do_train else "test"
+    features = datasets[default_split_name].features
 
-    if isinstance(features["src_tags"].feature, ClassLabel):
-        label_list = features["src_tags"].feature.names
+    if isinstance(features["mt_tags"].feature, ClassLabel):
+        label_list = features["mt_tags"].feature.names
         # No need to convert the labels since they are already ints.
         label_to_id = {i: i for i in range(len(label_list))}
     else:
-        label_list = get_label_list(datasets["train"]["src_tags"])
+        label_list = get_label_list(datasets[default_split_name]["mt_tags"])
         label_to_id = {l: i for i, l in enumerate(label_list)}
     num_labels = len(label_list)
 
