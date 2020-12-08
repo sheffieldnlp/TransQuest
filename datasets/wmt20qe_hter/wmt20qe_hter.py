@@ -16,7 +16,6 @@
 # Lint as: python3
 """WMT2020: Quality Estimation Task"""
 
-import csv
 import os
 
 import logging
@@ -84,9 +83,10 @@ class WMT2020QE(datasets.GeneratorBasedBuilder):
     def _split_generators(self, dl_manager):
         """Returns SplitGenerators."""
         if not self.config.data_dir:
-            raise ValueError(f"Must specify the folder where the files are, but got data_dir={self.config.data_files}")
+            raise ValueError(f"Must specify the folder where the files are, but got data_dir={self.config.data_dir}")
         data_dir = self.config.data_dir
-        return [
+        generators = []
+        generators.append(
             datasets.SplitGenerator(
                 name=datasets.Split.TRAIN,
                 gen_kwargs={
@@ -96,28 +96,38 @@ class WMT2020QE(datasets.GeneratorBasedBuilder):
                     "mt_tags_path": os.path.join(data_dir, "train", "train.tags"),
                     "hter_path": os.path.join(data_dir, "train", "train.hter"),
                 },
-            ),
-            datasets.SplitGenerator(
-                name=datasets.Split.VALIDATION,
-                gen_kwargs={
-                    "src_path": os.path.join(data_dir, "dev", "dev.src"),
-                    "mt_path": os.path.join(data_dir, "dev", "dev.mt"),
-                    "src_tags_path": os.path.join(data_dir, "dev", "dev.source_tags"),
-                    "mt_tags_path": os.path.join(data_dir, "dev", "dev.tags"),
-                    "hter_path": os.path.join(data_dir, "dev", "dev.hter"),
-                },
-            ),
-            datasets.SplitGenerator(
-                name=datasets.Split.TEST,
-                gen_kwargs={
-                    "src_path": os.path.join(data_dir, "test", "test.src"),
-                    "mt_path": os.path.join(data_dir, "test", "test.mt"),
-                    "src_tags_path": os.path.join(data_dir, "test", "test.source_tags"),
-                    "mt_tags_path": os.path.join(data_dir, "test", "test.tags"),
-                    "hter_path": os.path.join(data_dir, "test", "test.hter"),
-                },
-            ),
-        ]
+            )
+        )
+
+        if os.path.exists(os.path.join(data_dir, "dev")):
+            generators.append(
+                datasets.SplitGenerator(
+                    name=datasets.Split.VALIDATION,
+                    gen_kwargs={
+                        "src_path": os.path.join(data_dir, "dev", "dev.src"),
+                        "mt_path": os.path.join(data_dir, "dev", "dev.mt"),
+                        "src_tags_path": os.path.join(data_dir, "dev", "dev.source_tags"),
+                        "mt_tags_path": os.path.join(data_dir, "dev", "dev.tags"),
+                        "hter_path": os.path.join(data_dir, "dev", "dev.hter"),
+                    },
+                )
+            )
+
+        if os.path.exists(os.path.join(data_dir, "test")):
+            generators.append(
+                datasets.SplitGenerator(
+                    name=datasets.Split.TEST,
+                    gen_kwargs={
+                        "src_path": os.path.join(data_dir, "test", "test.src"),
+                        "mt_path": os.path.join(data_dir, "test", "test.mt"),
+                        "src_tags_path": os.path.join(data_dir, "test", "test.source_tags"),
+                        "mt_tags_path": os.path.join(data_dir, "test", "test.tags"),
+                        "hter_path": os.path.join(data_dir, "test", "test.hter"),
+                    },
+                )
+            )
+
+        return generators
 
     def _generate_examples(self, src_path, mt_path, src_tags_path, mt_tags_path, hter_path):
         logging.info("Generating examples")
