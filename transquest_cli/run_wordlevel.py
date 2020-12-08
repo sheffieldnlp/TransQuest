@@ -18,11 +18,9 @@ Fine-tuning the library models for token classification.
 
 import logging
 import os
-import sys
 
 import numpy as np
 from datasets import ClassLabel, load_dataset
-from sklearn.metrics import matthews_corrcoef
 
 import transformers
 from transformers import (
@@ -75,7 +73,7 @@ def get_label_list(labels):
     return label_list
 
 
-def get_true_predictions(raw_predictions, raw_labels, true_length_src, label_list):
+def get_true_predictions(raw_predictions, raw_labels, true_length_src, label_list, labels_in_gaps):
     # Remove ignored index (special tokens)
     true_predictions = [
         [label_list[p] for (p, l) in zip(prediction, label) if l != -100]
@@ -87,16 +85,20 @@ def get_true_predictions(raw_predictions, raw_labels, true_length_src, label_lis
         preds_src.append(preds[:src_length])
         # For the target side we predict OK by default for the GAPS
         preds_mt_no_gaps = preds[src_length:]
-        # TODO: Remove the direct use of OK label
-        preds_mt_with_gaps = ["OK"] * (2 * len(preds_mt_no_gaps) + 1)
-        for i, tag in enumerate(preds_mt_no_gaps):
-            preds_mt_with_gaps[2 * i + 1] = tag
-        preds_mt.append(preds_mt_with_gaps)
+        if labels_in_gaps:
+            # TODO: Remove the direct use of OK label
+            preds_mt_with_gaps = ["OK"] * (2 * len(preds_mt_no_gaps) + 1)
+            for i, tag in enumerate(preds_mt_no_gaps):
+                preds_mt_with_gaps[2 * i + 1] = tag
+            preds_mt.append(preds_mt_with_gaps)
+        else:
+            preds_mt.append(preds_mt_no_gaps)
+
     return preds_src, preds_mt
 
 
 # Tokenize all texts and align the labels with them.
-def tokenize_and_align_labels(examples, tokenizer, padding, label_to_id, label_all_tokens):
+def tokenize_and_align_labels(examples, tokenizer, padding, label_to_id, label_all_tokens, labels_in_gaps):
     tokenized_inputs = tokenizer(
         text=examples["src"],
         text_pair=examples["mt"],
@@ -114,7 +116,8 @@ def tokenize_and_align_labels(examples, tokenizer, padding, label_to_id, label_a
         examples["src_tags"], examples["mt_tags"], input_ids_all, offset_mappings
     ):
         # remove the labels for GAPS in mt
-        label_mt = [l for i, l in enumerate(label_mt) if i % 2 != 0]
+        if labels_in_gaps:
+            label_mt = [l for i, l in enumerate(label_mt) if i % 2 != 0]
         label = label_src + label_mt
         label_index = 0
         current_label = -100
@@ -140,22 +143,26 @@ def tokenize_and_align_labels(examples, tokenizer, padding, label_to_id, label_a
 
 
 def predict_and_save_output(
-    trainer, tokenized_eval_dataset, label_list, output_eval_results_file, output_eval_predictions_file
+    trainer, tokenized_eval_dataset, label_list, labels_in_gaps, output_eval_results_file, output_eval_predictions_file
 ):
     raw_predictions, raw_labels, _ = trainer.predict(tokenized_eval_dataset)
     raw_predictions = np.argmax(raw_predictions, axis=2)
 
     preds_src, preds_mt = get_true_predictions(
-        raw_predictions, raw_labels, tokenized_eval_dataset["length_source"], label_list=label_list
+        raw_predictions,
+        raw_labels,
+        tokenized_eval_dataset["length_source"],
+        label_list=label_list,
+        labels_in_gaps=labels_in_gaps,
     )
 
     f1_bad_src, f1_good_src, mcc_src = compute_scores(
         [[label_list[tag] for tag in tags] for tags in tokenized_eval_dataset["src_tags"]], preds_src
     )
+
     f1_bad_tgt, f1_good_tgt, mcc_tgt = compute_scores(
         [[label_list[tag] for tag in tags] for tags in tokenized_eval_dataset["mt_tags"]], preds_mt
     )
-
     metrics = {
         "src_f1-bad": f1_bad_src,
         "src_f1-good": f1_good_src,
@@ -182,16 +189,22 @@ def main(model_args, data_args, training_args):
     set_seed(training_args.seed)
 
     # Load the dataset
-    datasets = load_dataset(f"{DATASETS_LOADERS_DIR}/wmt20qe_hter", data_dir=data_args.data_dir)
+    if data_args.synthetic_train_dir:
+        synthetic_train_data = load_dataset(
+            f"{DATASETS_LOADERS_DIR}/{data_args.dataset_name}", data_dir=data_args.synthetic_train_dir, split="train"
+        )
+        features = synthetic_train_data.features
 
-    features = datasets["train"].features
+    if training_args.do_train or training_args.do_eval or training_args.do_predict:
+        datasets = load_dataset(f"{DATASETS_LOADERS_DIR}/{data_args.dataset_name}", data_dir=data_args.data_dir)
+        features = datasets[list(datasets.keys())[0]].features
 
-    if isinstance(features["src_tags"].feature, ClassLabel):
-        label_list = features["src_tags"].feature.names
+    if isinstance(features["mt_tags"].feature, ClassLabel):
+        label_list = features["mt_tags"].feature.names
         # No need to convert the labels since they are already ints.
         label_to_id = {i: i for i in range(len(label_list))}
     else:
-        label_list = get_label_list(datasets["train"]["src_tags"])
+        label_list = get_label_list(datasets["train"]["mt_tags"])
         label_to_id = {l: i for i, l in enumerate(label_list)}
     num_labels = len(label_list)
 
@@ -222,6 +235,21 @@ def main(model_args, data_args, training_args):
     # Padding strategy
     padding = "max_length" if data_args.pad_to_max_length else False
 
+    if data_args.synthetic_train_dir:
+        tokenized_synthetic_data = synthetic_train_data.map(
+            tokenize_and_align_labels,
+            fn_kwargs={
+                "tokenizer": tokenizer,
+                "padding": padding,
+                "label_to_id": label_to_id,
+                "label_all_tokens": data_args.label_all_tokens,
+                "labels_in_gaps": data_args.dataset_name != "bergamot",
+            },
+            batched=True,
+            num_proc=data_args.preprocessing_num_workers,
+            load_from_cache_file=False,
+        )
+
     tokenized_datasets = datasets.map(
         tokenize_and_align_labels,
         fn_kwargs={
@@ -229,20 +257,26 @@ def main(model_args, data_args, training_args):
             "padding": padding,
             "label_to_id": label_to_id,
             "label_all_tokens": data_args.label_all_tokens,
+            "labels_in_gaps": data_args.dataset_name != "bergamot",
         },
         batched=True,
         num_proc=data_args.preprocessing_num_workers,
-        load_from_cache_file=not data_args.overwrite_cache,
+        load_from_cache_file=False,
     )
 
     # Data collator
     data_collator = DataCollatorForTokenClassification(tokenizer)
 
+    if data_args.synthetic_train_dir:
+        tokenized_train_data = tokenized_synthetic_data
+    else:
+        tokenized_train_data = tokenized_datasets["train"] if training_args.do_train else None
+
     # Initialize Trainer
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=tokenized_datasets["train"] if training_args.do_train else None,
+        train_dataset=tokenized_train_data,
         eval_dataset=tokenized_datasets["validation"] if training_args.do_eval else None,
         tokenizer=tokenizer,
         data_collator=data_collator,
@@ -262,6 +296,7 @@ def main(model_args, data_args, training_args):
             trainer,
             tokenized_eval_dataset=tokenized_datasets["validation"],
             label_list=label_list,
+            labels_in_gaps=data_args.dataset_name != "bergamot",
             output_eval_results_file=os.path.join(training_args.output_dir, "valid_results.txt"),
             output_eval_predictions_file=os.path.join(training_args.output_dir, "valid_predictions.txt"),
         )
@@ -272,6 +307,7 @@ def main(model_args, data_args, training_args):
             trainer,
             tokenized_eval_dataset=tokenized_datasets["test"],
             label_list=label_list,
+            labels_in_gaps=data_args.dataset_name != "bergamot",
             output_eval_results_file=os.path.join(training_args.output_dir, "test_results.txt"),
             output_eval_predictions_file=os.path.join(training_args.output_dir, "test_predictions.txt"),
         )
