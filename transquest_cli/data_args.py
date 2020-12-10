@@ -35,6 +35,12 @@ class DataTrainingArguments:
             "one (in which case the other tokens will have a padding index)."
         },
     )
+    remove_gaps: bool = field(
+        default=False,
+        metadata={
+            "help": ""
+        },
+    )
 
     def __post_init__(self):
         # if self.dataset_name is None and self.train_file is None and self.validation_file is None:
