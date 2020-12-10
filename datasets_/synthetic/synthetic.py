@@ -76,10 +76,10 @@ class SyntheticSampling(datasets.GeneratorBasedBuilder):
             datasets.SplitGenerator(
                 name=datasets.Split.TRAIN,
                 gen_kwargs={
-                    "src_path": os.path.join(data_dir, "train.src"),
-                    "mt_path": os.path.join(data_dir, "train.mt"),
-                    "mt_tags_path": os.path.join(data_dir, "train.tags"),
-                    "hter_path": os.path.join(data_dir, "train.hter"),
+                    "src_path": os.path.join(data_dir, "train", "train.src"),
+                    "mt_path": os.path.join(data_dir, "train", "train.mt"),
+                    "mt_tags_path": os.path.join(data_dir, "train", "train.tags"),
+                    "hter_path": os.path.join(data_dir, "train", "train.hter"),
                 },
             )
         )
@@ -89,10 +89,10 @@ class SyntheticSampling(datasets.GeneratorBasedBuilder):
                 datasets.SplitGenerator(
                     name=datasets.Split.VALIDATION,
                     gen_kwargs={
-                        "src_path": os.path.join(data_dir, "dev.src"),
-                        "mt_path": os.path.join(data_dir, "dev.mt"),
-                        "mt_tags_path": os.path.join(data_dir, "dev.tags"),
-                        "hter_path": os.path.join(data_dir, "dev.hter"),
+                        "src_path": os.path.join(data_dir, "dev", "dev.src"),
+                        "mt_path": os.path.join(data_dir, "dev", "dev.mt"),
+                        "mt_tags_path": os.path.join(data_dir, "dev", "dev.tags"),
+                        "hter_path": os.path.join(data_dir, "dev", "dev.hter"),
                     },
                 )
             )
