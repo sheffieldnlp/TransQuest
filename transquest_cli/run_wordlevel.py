@@ -296,7 +296,7 @@ def main(model_args, data_args, training_args):
             trainer,
             tokenized_eval_dataset=tokenized_datasets["validation"],
             label_list=label_list,
-            labels_in_gaps=data_args.dataset_name != "bergamot",
+            labels_in_gaps=data_args.remove_gaps,
             output_eval_results_file=os.path.join(training_args.output_dir, "valid_results.txt"),
             output_eval_predictions_file=os.path.join(training_args.output_dir, "valid_predictions.txt"),
         )
@@ -307,7 +307,7 @@ def main(model_args, data_args, training_args):
             trainer,
             tokenized_eval_dataset=tokenized_datasets["test"],
             label_list=label_list,
-            labels_in_gaps=data_args.dataset_name != "bergamot",
+            labels_in_gaps=data_args.remove_gaps,
             output_eval_results_file=os.path.join(training_args.output_dir, "test_results.txt"),
             output_eval_predictions_file=os.path.join(training_args.output_dir, "test_predictions.txt"),
         )
