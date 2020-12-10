@@ -100,7 +100,7 @@ class SyntheticSampling(datasets.GeneratorBasedBuilder):
         if os.path.exists(os.path.join(data_dir, "test")):
             generators.append(
                 datasets.SplitGenerator(
-                    name=datasets.Split.VALIDATION,
+                    name=datasets.Split.TEST,
                     gen_kwargs={
                         "src_path": os.path.join(data_dir, "test", "test.src"),
                         "mt_path": os.path.join(data_dir, "test", "test.mt"),
