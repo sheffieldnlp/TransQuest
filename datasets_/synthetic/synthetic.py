@@ -86,15 +86,14 @@ class SyntheticSampling(datasets.GeneratorBasedBuilder):
 
         return generators
 
-    def _generate_examples(self, src_path, mt_path, src_tags_path, mt_tags_path, hter_path):
+    def _generate_examples(self, src_path, mt_path, mt_tags_path, hter_path):
         logging.info("Generating examples")
         with open(src_path, encoding="utf-8") as src_file, open(mt_path, encoding="utf-8") as mt_file, open(
-            src_tags_path, encoding="utf-8"
-        ) as src_tags_file, open(mt_tags_path, encoding="utf-8") as mt_tags_file, open(
+                mt_tags_path, encoding="utf-8") as mt_tags_file, open(
             hter_path, encoding="utf-8"
         ) as hter_file:
-            for id, (src, mt, src_tags, mt_tags, hter) in enumerate(
-                zip(src_file, mt_file, src_tags_file, mt_tags_file, hter_file)
+            for id, (src, mt, mt_tags, hter) in enumerate(
+                zip(src_file, mt_file, mt_tags_file, hter_file)
             ):
                 src_tokens = src.strip().split()
                 yield id, {
