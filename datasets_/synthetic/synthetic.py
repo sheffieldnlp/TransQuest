@@ -95,11 +95,12 @@ class SyntheticSampling(datasets.GeneratorBasedBuilder):
             for id, (src, mt, mt_tags, hter) in enumerate(
                 zip(src_file, mt_file, mt_tags_file, hter_file)
             ):
+                mt_tags = ["OK" if tag == "0" else "BAD" for tag in mt_tags]
                 src_tokens = src.strip().split()
                 yield id, {
                     "src": src_tokens,
                     "mt": mt.strip().split(),
                     "src_tags": ["OK"] * len(src_tokens),
-                    "mt_tags": mt_tags.strip().split(),
+                    "mt_tags": mt_tags,
                     "hter": float(hter.strip()),
                 }
