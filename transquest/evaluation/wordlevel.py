@@ -36,7 +36,11 @@ def compute_scores(true_tags, test_tags):
     flat_true = flatten(true_tags)
     flat_pred = flatten(test_tags)
 
-    f1_bad, f1_good = f1_score(flat_true, flat_pred, average=None, pos_label=None)
+    try:
+        f1_bad, f1_good = f1_score(flat_true, flat_pred, average=None, pos_label=None)
+    except ValueError:
+        f1_bad = 0.
+        f1_good = 0.
     mcc = matthews_corrcoef(flat_true, flat_pred)
     # Matthews correlation coefficient (MCC)
     # true/false positives/negatives
