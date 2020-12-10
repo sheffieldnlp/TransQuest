@@ -180,7 +180,7 @@ def predict_and_save_output(
 
         # Save predictions
         with open(output_eval_predictions_file, "w") as writer:
-            for prediction in preds_src:
+            for prediction in preds_mt:
                 writer.write(" ".join(prediction) + "\n")
 
 
