@@ -156,6 +156,12 @@ def predict_and_save_output(
         labels_in_gaps=labels_in_gaps,
     )
 
+    if trainer.is_world_process_zero():
+        # Save predictions
+        with open(output_eval_predictions_file, "w") as writer:
+            for prediction in preds_mt:
+                writer.write(" ".join(prediction) + "\n")
+
     f1_bad_src, f1_good_src, mcc_src = compute_scores(
         [[label_list[tag] for tag in tags] for tags in tokenized_eval_dataset["src_tags"]], preds_src
     )
@@ -177,11 +183,6 @@ def predict_and_save_output(
             for key, value in metrics.items():
                 logger.info(f"  {key} = {value}")
                 writer.write(f"{key} = {value}\n")
-
-        # Save predictions
-        with open(output_eval_predictions_file, "w") as writer:
-            for prediction in preds_mt:
-                writer.write(" ".join(prediction) + "\n")
 
 
 def main(model_args, data_args, training_args):
