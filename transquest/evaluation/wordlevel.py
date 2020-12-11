@@ -32,15 +32,27 @@ def flatten(lofl):
         return lofl.values()
 
 
-def compute_scores(true_tags, test_tags):
-    flat_true = flatten(true_tags)
-    flat_pred = flatten(test_tags)
+def flatten_with_sanity_check(true_tags, test_tags):
+    assert len(true_tags) == len(test_tags)
+    flat_true, flat_test = [], []
+    for i, true_tags_i, test_tags_i in enumerate(zip(true_tags, test_tags)):
+        if len(true_tags_i) != len(test_tags_i):
+            print('Warning inconsistent number of labels and predictions for line {}: {} and {}. Skipping'.format(
+                i, len(true_tags_i), len(test_tags_i)
+            ))
+            continue
+        else:
+            flat_true.extend(true_tags_i)
+            flat_test.extend(test_tags_i)
+    return flat_true, flat_test
 
-    try:
+
+def compute_scores(true_tags, test_tags):
+    flat_true, flat_pred = flatten_with_sanity_check(true_tags, test_tags)
+    if len(list(set(flat_true + flat_pred))) > 1:
         f1_bad, f1_good = f1_score(flat_true, flat_pred, average=None, pos_label=None)
-    except ValueError:
-        f1_bad = 0.
-        f1_good = 0.
+    else:
+        print('Warning! All predictions and gold labels are the same class.')
     mcc = matthews_corrcoef(flat_true, flat_pred)
     # Matthews correlation coefficient (MCC)
     # true/false positives/negatives
