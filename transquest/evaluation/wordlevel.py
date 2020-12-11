@@ -35,7 +35,7 @@ def flatten(lofl):
 def flatten_with_sanity_check(true_tags, test_tags):
     assert len(true_tags) == len(test_tags)
     flat_true, flat_test = [], []
-    for i, true_tags_i, test_tags_i in enumerate(zip(true_tags, test_tags)):
+    for i, (true_tags_i, test_tags_i) in enumerate(zip(true_tags, test_tags)):
         if len(true_tags_i) != len(test_tags_i):
             print('Warning inconsistent number of labels and predictions for line {}: {} and {}. Skipping'.format(
                 i, len(true_tags_i), len(test_tags_i)
