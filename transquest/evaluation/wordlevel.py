@@ -53,6 +53,7 @@ def compute_scores(true_tags, test_tags):
         f1_bad, f1_good = f1_score(flat_true, flat_pred, average=None, pos_label=None)
     else:
         print('Warning! All predictions and gold labels are the same class.')
+        f1_bad, f1_good = 0, 0
     mcc = matthews_corrcoef(flat_true, flat_pred)
     # Matthews correlation coefficient (MCC)
     # true/false positives/negatives
