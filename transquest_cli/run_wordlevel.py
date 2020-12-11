@@ -125,7 +125,7 @@ def tokenize_and_align_labels(examples, tokenizer, padding, label_to_id, label_a
         for input_id, offset in zip(input_ids, offset_mapping):
             # We set the label for the first token of each word. Special characters will have an offset of (0, 0)
             # so the test ignores them.
-            if label_index > len(label):
+            if label_index >= len(label):
                 print('Warning! Index error in tokenize_and_align_labels. Skipping example.')
                 break
             # TODO: Very specific to XLM-Roberta tokenization. How to generalise?
