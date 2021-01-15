@@ -34,11 +34,14 @@ from transformers import (
     set_seed,
 )
 from transformers.trainer_utils import is_main_process
-from transquest.models.modeling_joint import XLMRobertaForJointQualityEstimation
-from transquest.evaluation.wordlevel_metrics import compute_scores
-from transquest_cli.model_args import ModelArguments
-from transquest_cli.data_args import DataTrainingArguments
-from transquest_cli.utils import DATASETS_LOADERS_DIR
+
+from deepquestpy.models.modeling_joint import XLMRobertaForJointQualityEstimation
+from deepquestpy.evaluation.wordlevel_metrics import compute_scores
+from deepquestpy.data.data_collator import DataCollatorForJointClassification
+
+from deepquestpy_cli.model_args import ModelArguments
+from deepquestpy_cli.data_args import DataTrainingArguments
+from deepquestpy_cli.utils import DATASETS_LOADERS_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -271,7 +274,7 @@ def main(model_args, data_args, training_args):
         )
 
     # Data collator
-    data_collator = DataCollatorForTokenClassification(tokenizer)
+    data_collator = DataCollatorForJointClassification(tokenizer)
 
     if data_args.synthetic_train_dir:
         tokenized_train_data = tokenized_synthetic_data
