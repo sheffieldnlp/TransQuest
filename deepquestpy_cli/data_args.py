@@ -16,6 +16,9 @@ class DataTrainingArguments:
     synthetic_train_dir: Optional[str] = field(
         default=None, metadata={"help": "The folder with the synthetic data to use for training the model."}
     )
+    synthetic_train_perc: Optional[int] = field(
+        default=100, metadata={"help": "The percentage of the synthetic data to use for training."}
+    )
     overwrite_cache: bool = field(default=True, metadata={"help": "Overwrite the cached training and evaluation sets"})
     preprocessing_num_workers: Optional[int] = field(
         default=None, metadata={"help": "The number of processes to use for the preprocessing."},
