@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # Lint as: python3
-"""WMT2020: Quality Estimation Task"""
+"""WMT20: Quality Estimation Task"""
 
 import os
 
@@ -69,9 +69,9 @@ class WMT2020QE(datasets.GeneratorBasedBuilder):
             features=datasets.Features(
                 {
                     "src": datasets.Sequence(datasets.Value("string")),
-                    "mt": datasets.Sequence(datasets.Value("string")),
+                    "tgt": datasets.Sequence(datasets.Value("string")),
                     "src_tags": datasets.Sequence(datasets.features.ClassLabel(names=["OK", "BAD"])),
-                    "mt_tags": datasets.Sequence(datasets.features.ClassLabel(names=["OK", "BAD"])),
+                    "tgt_tags": datasets.Sequence(datasets.features.ClassLabel(names=["OK", "BAD"])),
                     "hter": datasets.Value("float32"),
                 }
             ),
@@ -91,9 +91,9 @@ class WMT2020QE(datasets.GeneratorBasedBuilder):
                 name=datasets.Split.TRAIN,
                 gen_kwargs={
                     "src_path": os.path.join(data_dir, "train", "train.src"),
-                    "mt_path": os.path.join(data_dir, "train", "train.mt"),
+                    "tgt_path": os.path.join(data_dir, "train", "train.mt"),
                     "src_tags_path": os.path.join(data_dir, "train", "train.source_tags"),
-                    "mt_tags_path": os.path.join(data_dir, "train", "train.tags"),
+                    "tgt_tags_path": os.path.join(data_dir, "train", "train.tags"),
                     "hter_path": os.path.join(data_dir, "train", "train.hter"),
                 },
             )
@@ -105,9 +105,9 @@ class WMT2020QE(datasets.GeneratorBasedBuilder):
                     name=datasets.Split.VALIDATION,
                     gen_kwargs={
                         "src_path": os.path.join(data_dir, "dev", "dev.src"),
-                        "mt_path": os.path.join(data_dir, "dev", "dev.mt"),
+                        "tgt_path": os.path.join(data_dir, "dev", "dev.mt"),
                         "src_tags_path": os.path.join(data_dir, "dev", "dev.source_tags"),
-                        "mt_tags_path": os.path.join(data_dir, "dev", "dev.tags"),
+                        "tgt_tags_path": os.path.join(data_dir, "dev", "dev.tags"),
                         "hter_path": os.path.join(data_dir, "dev", "dev.hter"),
                     },
                 )
@@ -119,9 +119,9 @@ class WMT2020QE(datasets.GeneratorBasedBuilder):
                     name=datasets.Split.TEST,
                     gen_kwargs={
                         "src_path": os.path.join(data_dir, "test", "test.src"),
-                        "mt_path": os.path.join(data_dir, "test", "test.mt"),
+                        "tgt_path": os.path.join(data_dir, "test", "test.mt"),
                         "src_tags_path": os.path.join(data_dir, "test", "test.source_tags"),
-                        "mt_tags_path": os.path.join(data_dir, "test", "test.tags"),
+                        "tgt_tags_path": os.path.join(data_dir, "test", "test.tags"),
                         "hter_path": os.path.join(data_dir, "test", "test.hter"),
                     },
                 )
@@ -129,11 +129,11 @@ class WMT2020QE(datasets.GeneratorBasedBuilder):
 
         return generators
 
-    def _generate_examples(self, src_path, mt_path, src_tags_path, mt_tags_path, hter_path):
+    def _generate_examples(self, src_path, tgt_path, src_tags_path, tgt_tags_path, hter_path):
         logging.info("Generating examples")
-        with open(src_path, encoding="utf-8") as src_file, open(mt_path, encoding="utf-8") as mt_file, open(
+        with open(src_path, encoding="utf-8") as src_file, open(tgt_path, encoding="utf-8") as mt_file, open(
             src_tags_path, encoding="utf-8"
-        ) as src_tags_file, open(mt_tags_path, encoding="utf-8") as mt_tags_file, open(
+        ) as src_tags_file, open(tgt_tags_path, encoding="utf-8") as mt_tags_file, open(
             hter_path, encoding="utf-8"
         ) as hter_file:
             for id, (src, mt, src_tags, mt_tags, hter) in enumerate(
@@ -141,8 +141,8 @@ class WMT2020QE(datasets.GeneratorBasedBuilder):
             ):
                 yield id, {
                     "src": src.strip().split(),
-                    "mt": mt.strip().split(),
+                    "tgt": mt.strip().split(),
                     "src_tags": src_tags.strip().split(),
-                    "mt_tags": mt_tags.strip().split(),
+                    "tgt_tags": mt_tags.strip().split(),
                     "hter": float(hter.strip()),
                 }
