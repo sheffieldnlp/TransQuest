@@ -36,7 +36,7 @@ from transformers import (
 from transformers.trainer_utils import is_main_process
 
 from deepquestpy.models.modeling_joint import XLMRobertaForJointQualityEstimation
-from deepquestpy.evaluation.wordlevel_metrics import compute_scores
+from deepquestpy.metrics.wordlevel_eval import compute_scores
 from deepquestpy.data.data_collator import DataCollatorForJointClassification
 
 from deepquestpy_cli.model_args import ModelArguments

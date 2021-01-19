@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name="deepquest-py",
+    name="deepquestpy",
     version="0.1.0",
     author="SheffieldNLP",
     description="Pytorch version of DeepQuest - a library for Quality Estimation",
